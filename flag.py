@@ -1,9 +1,10 @@
 import requests
 import re
 import string, json
+import nmap
 
-host = 'http://host3.dreamhack.games'
-port = '19472'
+host = 'http://colaf.net'
+port = '443'
 url = host+':'+port
 headers = {'Content-Type': 'application/json; charset=utf-8'}
 cookies = {
@@ -63,6 +64,36 @@ def printLog(payload, responseText):
     print("================================================================")
     print("payload: " + payload)
     print(response.text)
+################################ SCAN   #################################
+nmap_scan = nmap.PortScanner()
+ip_regex = re.compile("^\d")
+try:
+    isValidIp = ip_regex.search(host.replace(" ", ""))
+    if isValidIp:
+        IP = host
+    else:
+        IP = socket.gethostbyname(host)
+except:
+    print("잘못된 host name 입니다.")
+
+port_regex = re.compile("([0-9]+){1, 5}")
+isValidPort = port_regex.search(port.replace(" ", ""))
+if isValidPort:
+    port_min = int(isValidPort.group(1))
+    if isValidPort.group(2):
+        port_max = int(isValidPort.group(2))
+    else:
+        port_max = int(isValidPort.group(1))
+else:
+    port_min = 443
+    port_max = 443
+
+for port in range(port_min, port_max + 1):
+    try:
+        port_condition = nmap_scan.scan(IP, str(port))
+        print(port_condition)
+    except:
+        print(f"{port} 포트는 닫혀있습니다.")
 
 ################################ CANVAS  ################################
 def existDetector(text):
