@@ -1,54 +1,3 @@
-from datetime import datetime, timedelta
-import mojito
-
-mojito.__version__
-
-f = open("../cert/koreainvestment.key")
-lines = f.readlines()
-key = line[0].strip()
-secret = line[1].strip()
-acc_no = line[2].strip()
-f.close()
-
-broker = mojito.KoreaInvestment(
-        api_key=key,
-        api_secret=secret,
-        acc_no=acc_no,
-        mock=True
-        )
-brocker.fetch_price("005930")['output']['stck_oprc'] # 시가
-brocker.fetch_price("005930")['output']['stck_hgpr'] # 고가
-brocker.fetch_price("005930")['output']['stck_lwpr'] # 저가
-brocker.fetch_price("005930")['output']['stck_prpr'] # 종
-
-start = '2020-1-1'
-end = '2023-1-1'
-start = datetime.strptime(start, '%y-%m-%d')
-end = datetime.strptime(end, '%y-%m-%d')
-
-account = {}
-ratio = {}
-
-def price(code, date):
-    while !: # 가격이 없으면
-        next
-
-def next(date):
-
-while date <= end:
-    total = 0
-    for ueouo: # total 값을 계산
-        total +=
-    
-    if Account.volume*price(code, date)-total*ratio.code > price(code, date):
-        sell()
-    elif Account.volume*price(code, date)-total*ratio.code < price(code, date):
-        buy()
-
-    date = next(date, )
-
-import requests
-import json
 import yaml
 from collections import namedtuple
 import copy
@@ -183,5 +132,14 @@ def auth_upbit():
     jwt_token = jwt.encode(payload, 'Secret_key')
     authorization_token = 'Bearer {}'.format(jwt_token)
     return authorization_token
+
+def getCryptoCurrencyPrice(stock_no, date):
+    url = "https://api.upbit.com/v1/candles/minutes/30?market=KRW-BTC&count=5&to=2022-01-01T02:00:00"
+    headers = {"accept": "application/json"}
+    response = requests.get(url, headers=headers)
+    for row in response.json():
+        UTC = row.get('candle_date_time_utc')
+        Close = row.get('trade_price')
+        print(UTC, Close)
 
 auth()
