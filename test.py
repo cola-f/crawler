@@ -1,7 +1,17 @@
-import Upbit
+class A():
+    def __init__(self):
+        self.a = 'abc'
+        self.b = 'def'
 
-client = Upbit()
-resp = client.Candle.Candle_days(
-    market='KRW-BTC'
-)
-print(resp['result'])
+    def getA():
+        return self.a
+
+    def getB():
+        return self.b
+
+    def auth(self):
+        print("a: ", self.getA())
+        print("b: ", self.getB())
+
+clas = A()
+clas.auth()
