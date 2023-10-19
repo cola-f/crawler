@@ -34,14 +34,15 @@ class Stock:
         return self.default_headers
         
     def auth(self):
-        url = f'{_cfg[svr]}/oauth2/tokenP'
-        headers = getDefaultHeaders()
+        url = f'{_cfg["prod"]}/oauth2/tokenP'
+        headers = self.getDefaultHeaders()
         body = {
                 "grant_type": "client_credentials",
                 }
         body["appkey"] = _cfg['app_key']
         body["appsecret"] = _cfg['app_secret']
-        response = requests.post(url, headers = headers, data = json.dumps(body))
+        response = requests.post(url, headers = headers, data = json.dumps(body), verify = False)
+        print("response: ", response.text)
         if response.status_code == 200:
             self.app_token = response.json()['access_token']
             print("app_token: ", app_token)
