@@ -1,8 +1,11 @@
 import requests
 import re
 import string, json
-import nmap
 import socket
+import os, platform
+import threading
+from datetime import datetime
+import math
 
 host = 'colaf.net'
 port = '80'
@@ -66,41 +69,71 @@ def printLog(payload, responseText):
     print("payload: " + payload)
     print(response.text)
 ################################ SCAN   #################################
-nmap_scan = nmap.PortScanner()
-ip_regex = re.compile("^\d")
-try:
-    print(str(host.replace(" ", "")))
-    isValidIp = ip_regex.search(host.replace(" ", ""))
-    print(str(isValidIp))
-    if isValidIp:
-        print("ifif")
-        IP = host
+class Scan(threading.Thread):
+    def __init__(self, ip, port_min, port_max):
+        self.ip = ip
+        self.port_min = port_min
+        self.port_max = port_max
+        self.OS = platform.system()
+
+        if (self.OS == "Windows"):
+            self.ping1 = "ping -n 1 "
+        elif (self.OS =="Linux"):
+            self.ping1 = "ping -c 1 "
+        else:
+            self.ping1 = "ping -c 1 "
+
+    def run(self):
+        for port in range(self.port_min, self.port_max):
+            command = self.ping1 + self.ip + '.' + port
+            response = os.popen(command)
+            for line in response.readlines():
+                if(line.count("TTL")):
+                    break
+
+def scan():
+    ip_regex = re.compile("(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}")
+    # port_regex = re.compile("((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{0,5})|([0-9]{1,4}))")
+    port_regex = re.compile("\d{1,5}")
+    host = input("host: ")
+    isValidIp = ip_regex.search(host).group(0)
+    isValidPort = True
+    if not isValidIp:
+        try:
+            ip = socket.gethostbyname(host)
+        except:
+            print('no IP found')
+            return
     else:
-        print("elseelse")
-        IP = socket.gethostbyname(host)
-        print(str(IP))
-except:
-    print("잘못된 host name 입니다.")
+        ip = ip_regex.findall(host)[0]
+        port_min = input("port_min: ")
+        print("port_min is ", port_min)
+        port_min = int(port_regex.search(port_min).group(0))
+        isValidPort = port_min
+        print("port_min is ", port_min)
 
-port_regex = re.compile("([0-9]+){1, 5}")
-isValidPort = port_regex.search(port.replace(" ", ""))
-if isValidPort:
-    port_min = int(isValidPort.group(1))
-    if isValidPort.group(2):
-        port_max = int(isValidPort.group(2))
+    if not isValidPort:
+        port_min = 80
     else:
-        port_max = int(isValidPort.group(1))
-else:
-    port_min = 443
-    port_max = 443
+        port_max = input("port_max: ")
+        port_max = int(port_regex.search(port_max).group(0))
+        isValidPort = port_max
 
-for port in range(port_min, port_max + 1):
-    try:
-        port_condition = nmap_scan.scan(IP, str(port))
-        print(port_condition)
-    except:
-        print(f"{port} 포트는 닫혀있습니다.")
+    if not isValidPort:
+        port_max = 80
 
+    start_time = datetime.now()
+
+    n_thread = 20
+    step = math.ceil((int(port_max) - int(port_min))/n_thread)
+    for index in range(n_thread-2):
+        Scan(ip, port_min+index*step, port_min+(index+1)*step)  # port_min+index*step 이상, port_min+index*step 미만
+        Scan.start()
+    index = n_thread-1
+    Scan(ip, port_min+index*step, port_max)
+    Scan.start()
+
+scan()
 ################################ CANVAS  ################################
 def existDetector(text):
     regex_exist = re.compile('exists')
