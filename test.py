@@ -1,11 +1,17 @@
-import tensorflow as tf
-import pandas as pd # 파일을 불러오기 위한 library
+class A():
+    def __init__(self):
+        self.a = 'abc'
+        self.b = 'def'
 
-tall = [170, 180, 175, 160]
-shoe = [260, 270, 265, 255]
+    def getA():
+        return self.a
 
-a = tf.Variable(0.1)
-b = tf.variable(0.2)
+    def getB():
+        return self.b
 
-opt = tf.keras.optimizers.Adam(learning_rate = 0.1))
-#경사하강법을 사용해서 변수를 업데이트하는 도구
+    def auth(self):
+        print("a: ", self.getA())
+        print("b: ", self.getB())
+
+clas = A()
+clas.auth()

