@@ -10,6 +10,9 @@ from tqdm import tqdm
 import time
 import random
 import yaml
+import sys
+import logging
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 with open ('flag.yml', encoding='UTF8') as file:
     dictionary = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -74,22 +77,35 @@ class Scan(threading.Thread):
                             service = "not found"
                         if result == 0:
                             print("ip ", ip_dst, ", port ", str(port_dst), " is opened. protocol is ", service)
-                        else:
-                            print("ip ", ip_dst, ", port ", str(port_dst), " is closed. protocol is ", service)
+                        #else:
+                        #    print("ip ", ip_dst, ", port ", str(port_dst), " is closed. protocol is ", service)
                         socket_temp.close()
             elif self.method == "syn":
                 for ip_dst in self.ipList:
                     for port_dst in self.portList:
                         port_rand = random.randrange(1024, 65536)
                         ip = scapy.IP(src=self.ip_src, dst=ip_dst)
-                        tcp = scapy.TCP(sport = port_rand, dport = port_dst, flags="S", seq=12345)
+                        tcp = scapy.TCP(sport=port_rand, dport=port_dst, flags="S", seq=1)
                         packet = ip/tcp
-                        p = scapy.sr1(packet, inter=1, timeout = 4)
-                        p.show
-                        tcp = scapy.TCP(sport=port_rand, dport = port_dst, flags="R", seq=12347)
+                        p = scapy.sr1(packet, inter=1, timeout = 1, verbose=0)#verbose=0은 log가 발생하지 않게 하는 거
+                        if p == None:
+                                print(ip_dst+":"+str(port_dst)+" is filtered")
+                        elif "A" in p[scapy.TCP].flags:
+                            response = requests.options("http://"+ip_dst+":"+str(port_dst), verify=False)
+                            print("header: "+str(response.headers))
+                            response = requests.get("http://"+ip_dst+":"+str(port_dst), verify=False)
+                            print(ip_dst+":"+str(port_dst)+" is opened("+str(p[scapy.TCP].flags)+")")
+                            print("response: "+response.text)
+                        elif "R" in p[scapy.TCP].flags:
+                            print(ip_dst+":"+str(port_dst)+" is closed("+str(p[scapy.TCP].flags)+")")
+                        elif "F" in p[scapy.TCP].flags:
+                            print(ip_dst+":"+str(port_dst)+" is closed("+str(p[scapy.TCP].flags)+")")
+                        else:
+                            print(ip_dst+":"+str(port_dst)+" ???")
+                            p.show()
+                        tcp = scapy.TCP(sport=port_rand, dport = port_dst, flags="R", seq=3)
                         packet = ip/tcp
-                        p = scapy.sr1(packet)
-                        p.show()
+                        p = scapy.sr1(packet, inter=1, timeout = 1, verbose=0)
         except KeyboardInterrupt:
             print("Keyboard inturrupt")
             sys.exit()
@@ -147,7 +163,6 @@ def portParser(text):
         port_end_regex = re.compile(r'(?<=\-)(?:[\d]*)')
         seperated_by_comma = comma_seperator_regex.findall(text)
         seperated_by_comma = [port for port in seperated_by_comma if port] # 빈 문자열 제거
-        print("seperated by comma: ", seperated_by_comma)
         for text in seperated_by_comma:
             if '-' in text:
                 start = port_start_regex.findall(text)[0]
@@ -156,7 +171,6 @@ def portParser(text):
                 print("end: ", end)
                 for port in range(int(start), int(end)+1):
                     portList.append(port)
-                    print("", str(port), " is joined")
             else:
                 portList.append(text)
 
@@ -168,13 +182,17 @@ def allScan(method):
     # port_regex = re.compile("((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{0,5})|([0-9]{1,4}))")
     port_regex = re.compile("\d{1,5}")
     host = input("host: ")
-    isValidIp = ip_regex.search(host).group(0)
+    if len(ip_regex.findall(host))>0: #host가 ip_regex조건에 맞는다면
+        isValidIp = True
+    else:
+        isValidIp = False
     isValidPort = True
     if host == None:
         ipList = dictionary['ipList']
     elif not isValidIp:
         try:
             ip = socket.gethostbyname(host)
+            ipList = urlParser(ip)
         except:
             print('no IP found')
             return
@@ -189,9 +207,9 @@ def allScan(method):
 
     start_time = datetime.now()
 
-    print("ipList: ", ipList)
-    print("portList: ", portList)
-    n_thread = 4
+    #print("ipList: ", ipList)
+    #print("portList: ", portList)
+    n_thread = 40
     if method == "open":
         for index in range(n_thread):
             portSubList = portList[index::n_thread]
@@ -204,7 +222,7 @@ def allScan(method):
             scan.start()
 
 
-allScan("open")
+allScan("syn")
 ################################ CANVAS  ################################
 def existDetector(text):
     regex_exist = re.compile('exists')

@@ -1,17 +1,6 @@
-class A():
-    def __init__(self):
-        self.a = 'abc'
-        self.b = 'def'
-
-    def getA():
-        return self.a
-
-    def getB():
-        return self.b
-
-    def auth(self):
-        print("a: ", self.getA())
-        print("b: ", self.getB())
-
-clas = A()
-clas.auth()
+import scapy.all as scapy
+ip = scapy.IP(src="172.22.15.184", dst="172.22.15.42")
+tcp = scapy.TCP(sport=30000, dport=80, flags="S", seq=1)
+packet = ip/tcp
+p = scapy.sr1(packet, inter=1, timeout=4)
+p.show()
