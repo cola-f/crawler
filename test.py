@@ -1,6 +1,6 @@
-from scapy.all import *
-p=sr1(IP(dst='192.168.1.10')/ICMP()/"18181818", timeout=4)
-print("ICMP: ", str(p))
-
-p=sr1(IP(dst='192.168.1.10')/TCP(sport=19930, dport=7680),inter=0.5, retry=1, timeout=4)
-print("TCP: ", str(p))
+import scapy.all as scapy
+ip = scapy.IP(src="172.22.15.184", dst="172.22.15.42")
+tcp = scapy.TCP(sport=30000, dport=80, flags="S", seq=1)
+packet = ip/tcp
+p = scapy.sr1(packet, inter=1, timeout=4)
+p.show()
