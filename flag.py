@@ -80,16 +80,16 @@ class Scan(threading.Thread):
             elif self.method == "syn":
                 for ip_dst in self.ipList:
                     for port_dst in self.portList:
-                        port_rand = random.randrange(1024, 65536)
-                        ip = scapy.IP(src=self.ip_src, dst=ip_dst)
-                        tcp = scapy.TCP(sport = port_rand, dport = port_dst, flags="S", seq=12345)
+                        print("port: ", port_dst)
+                        ip = scapy.IP(dst=ip_dst)
+                        tcp = scapy.TCP(dport = port_dst, flags="S", seq=0)
                         packet = ip/tcp
                         p = scapy.sr1(packet, inter=1, timeout = 4)
-                        p.show
-                        tcp = scapy.TCP(sport=port_rand, dport = port_dst, flags="R", seq=12347)
+                        print(str(p))
+                        tcp = scapy.TCP(dport = port_dst, flags="R", seq=0)
                         packet = ip/tcp
                         p = scapy.sr1(packet)
-                        p.show()
+                        print(str(p))
         except KeyboardInterrupt:
             print("Keyboard inturrupt")
             sys.exit()
@@ -147,16 +147,12 @@ def portParser(text):
         port_end_regex = re.compile(r'(?<=\-)(?:[\d]*)')
         seperated_by_comma = comma_seperator_regex.findall(text)
         seperated_by_comma = [port for port in seperated_by_comma if port] # 빈 문자열 제거
-        print("seperated by comma: ", seperated_by_comma)
         for text in seperated_by_comma:
             if '-' in text:
                 start = port_start_regex.findall(text)[0]
-                print("start: ", start)
                 end = port_end_regex.findall(text)[0]
-                print("end: ", end)
                 for port in range(int(start), int(end)+1):
                     portList.append(port)
-                    print("", str(port), " is joined")
             else:
                 portList.append(text)
 
@@ -189,9 +185,7 @@ def allScan(method):
 
     start_time = datetime.now()
 
-    print("ipList: ", ipList)
-    print("portList: ", portList)
-    n_thread = 4
+    n_thread = 20
     if method == "open":
         for index in range(n_thread):
             portSubList = portList[index::n_thread]
@@ -204,7 +198,7 @@ def allScan(method):
             scan.start()
 
 
-allScan("open")
+allScan('syn')
 ################################ CANVAS  ################################
 def existDetector(text):
     regex_exist = re.compile('exists')
