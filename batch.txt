@@ -1,0 +1,156 @@
+@echo off
+chcp 949
+setlocal
+:::::::::::::::
+:: 진단 ::
+:::::::::::::::
+:: W-01 1.1 Administrator 계정 이름 변경 또는 보안성 강화
+set found=0
+for /f "tokens=1*" %%i in ('net user') do (
+    if "%%i"=="Administrator" (
+        set found=1
+    )
+)
+if %found%==1 (
+	echo W-01 1.1 Administrator 계정 이름 변경 또는 보안성 강화
+	echo Administrator 계정이 존재합니다.
+)
+::아래 코드가 없으면 자꾸 secpol.txt 파일을 못 읽어 옴
+echo aaa > secpol.txt
+secedit /export /cfg secpol.txt
+if not errorlevel 0 (
+	echo failure at exporting secpol.msc
+	goto EXIT
+)
+:: W-02 1.2 Guest 계정 비활성화
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"EnableGuestAccount" secpol.txt') do set EnableGuestAccount=%%b
+if %EnableGuestAccount% NEQ 0 ( W-02 1.2 Guest 계정 비활성화
+echo EnableGuestAccount==0)
+:: W-03 1.3 불필요한 계정 제거
+net user
+:: W-04 1.4 계정 잠금 임계값 설정
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"LockoutBadCount" secpol.txt') do set LockoutBadCount=%%b
+if %LockoutBadCount% GTR 5 ( echo W-04 1.4 계정 잠금 임계값 설정
+	echo LockoutBadCount<=5)
+
+:: W-05 1.5 해독 가능한 암호화를 사용하여 암호 저장 해제
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"ClearTextPassword" secpol.txt') do set ClearTextPassword=%%b
+if %ClearTextPassword% NEQ 0 ( echo W-05 1.5 해독 가능한 암호화를 사용하여 암호 저장 해제
+	echo ClearTextPassword==0)
+:: W-31 2.25 최신 서비스팩 적용
+::echo W-31 2.25 최신 서비스팩 적용
+systeminfo
+:: W-48 1.9 패스워드 복잡성 설정
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"PasswordComplexity" secpol.txt') do set PasswordComplexity=%%b
+if %PasswordComplexity% NEQ 1 ( echo W-48 1.9 패스워드 복잡성 설정
+	echo PasswordComplexity==1)
+:: W-49 1.10 패스워드 최소 암호 길이
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"MinimumPasswordLength" secpol.txt') do set MinimumPasswordLength=%%b
+if %MinimumPasswordLength% LSS 8 ( echo W-49패스워드 최소 암호 길이 8이상이어야 함
+	echo MinimumPasswordLength>=8)
+:: W-50 1.11 패스워드 최대 사용 기간
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"MaximumPasswordAge" secpol.txt') do set MaximumPasswordAge=%%b
+if %MaximumPasswordAge% GTR 90 ( echo W-50 패스워드 최대 사용 기간이 90일 이하여야 함
+	echo MaximumPasswordAge<=90)
+:: W-51 1.12 패스워드 최소 사용 기간
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"MinimumPasswordAge" secpol.txt') do set MinimumPasswordAge=%%b
+if %MinimumPasswordAge% EQU 0 ( echo W-51 패스워드 최소 사용 기간이 0일 초과해야 함
+	echo MinimumPasswordAge>0)
+:: W-55 1.16 최근 암호 기억
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"PasswordHistorySize" secpol.txt') do set PasswordHistorySize=%%b
+if %PasswordHistorySize% LSS 4 ( echo W-55 최근 암호 기억
+	echo PasswordHistorySize >=4)
+:: W-69 3.3 정책에 따른 시스템 로깅 설정
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"AuditSystemEvents" secpol.txt') do set AuditSystemEvents=%%b
+if %AuditSystemEvents% LSS 3 ( echo W-69 3.3 정책에 따른 시스템 로깅 설정
+	echo AuditSystemEvents==3)
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"AuditLogonEvents" secpol.txt') do set AuditLogonEvents=%%b
+if %AuditLogonEvents% LSS 3 ( echo W-69 3.3 정책에 따른 시스템 로깅 설정
+	echo AuditLogonEvents==3)
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"AuditPolicyChange" secpol.txt') do set AuditPolicyChange=%%b
+if not %AuditPolicyChange%==1 if not %AuditPolicyChange==3 ( echo W-69 3.3 정책에 따른 시스템 로깅 설정
+	echo AuditPolicyChange==1 or 3)
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"AuditAccountManage" secpol.txt') do set AuditAccountManage=%%b
+if not %AuditAccountManage%==1 if not %AuditAccountManage%==3 ( echo W-69 3.3 정책에 따른 시스템 로깅 설정
+	echo AuditAccountManage==1 or 3)
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"AuditDSAccess" secpol.txt') do set AuditDSAccess=%%b
+if not %AuditDSAccess%==1 if not %AuditDSAccess%==3 ( echo W-69 3.3 정책에 따른 시스템 로깅 설정
+	echo AuditDSAccess==1 or 3)
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"AuditAccountLogon" secpol.txt') do set AuditAccountLogon=%%b
+if not %AuditAccountLogon%==1 if not %AuditAccountLogon%==3 ( echo W-69 3.3 정책에 따른 시스템 로깅 설정
+	echo AuditAccountManage==1 or 3)
+:: W-39 5.4 로그온 하지 않고 시스템 종료 허용 해제
+for /f "tokens=1,2 delims==" %%a in ('findstr /bic:"MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\ShutdownWithoutLogon" secpol.txt') do set ShutdownWithoutLogon=%%b
+if "%ShutdownWithoutLogon%" NEQ "4,0" (
+	set ShutdownWithoutLogon=""
+	for /f "tokens=2*" %%A in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v ShutdownWithoutLogon 2^>nul') do set "ShutdownWithoutLogon=%%B"
+	if "%ShutdownWithoutLogon%" EQU "" (
+		echo W-39 5.4 로그온 하지 않고 시스템 종료 허용 해제1
+		echo HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\ShutdownWithoutLogon==0
+	) else (
+		echo W-39 5.4 로그온 하지 않고 시스템 종료 허용 해제2
+		echo ShutdownWithoutLogon==0
+	)
+)
+:: W-8 2.2 하드디스크 기본 공유 제거
+for /f "tokens=2*" %%A in ('reg query "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" /v AutoShareWks 2^>nul') do set "AutoShareWks=%%B"
+if %AutoShareWks% NEQ 0 ( echo W-8 2.2 하드디스크 기본 공유 제거
+	echo HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters\AutoShareWks==0)
+:: W-38 5.3 화면보호기 설정
+for /f "tokens=2*" %%A in ('reg query "HKCU\Control Panel\Desktop" /v ScreenSaveActive 2^>nul') do set "ScreenSaveActive=%%B"
+if %ScreenSaveActive% NEQ 1 ( echo W-38 5.3 화면보호기 설정
+	echo HKCU\Control Panel\Desktop\ScreenSaveActive==1)
+for /f "tokens=2*" %%A in ('reg query "HKCU\Control Panel\Desktop" /v ScreenSaverIsSecure 2^>nul') do set "ScreenSaverIsSecure=%%B"
+if %ScreenSaverIsSecure% NEQ 1 ( echo W-38 5.3 화면보호기 설정
+	echo HKCU\Control Panel\Desktop\ScreenSaverIsSecure==1)
+for /f "tokens=2*" %%A in ('reg query "HKCU\Control Panel\Desktop" /v ScreenSaveTimeOut 2^>nul') do set "ScreenSaveTimeOut=%%B"
+if %ScreenSaveTimeOut% LSS 600 ( echo W-38 5.3 화면보호기 설정
+	echo HKCU\Control Panel\Desktop\ScreenSaveTimeOut>=600)
+set SCRNSAVE=""
+for /f "tokens=2*" %%A in ('reg query "HKCU\Control Panel\Desktop" /v SCRNSAVE.EXE 2^>nul') do set "SCRNSAVE=%%B"
+if %ScreenSaverIsSecure% EQU "" ( echo W-38 5.3 화면보호기 설정
+	echo HKCU\Control Panel\Desktop\SCRNSAVE.EXE=="???.scr")
+
+del secpol.txt
+
+set /p que=Do you want to modify configuration?(y or any)
+if "%que%" EQU "y" (goto PRESCRIPTION) else (goto EXIT)
+:PRESCRIPTION
+:::::::::::::::
+:: 조치 ::
+:::::::::::::::
+echo [System Access] > temp.inf
+echo MinimumPasswordAge = 1 >> temp.inf
+echo MaximumPasswordAge = 90 >> temp.inf
+echo MinimumPasswordLength = 8 >> temp.inf
+echo PasswordComplexity = 1 >> temp.inf
+echo PasswordHistorySize = 4 >> temp.inf
+echo LockoutBadCount = 5 >> temp.inf
+echo ResetLockoutCount = 30 >> temp.inf
+echo LockoutDuration = 30 >> temp.inf
+echo ClearTextPassword = 0 >> temp.inf
+echo [Event Audit] >> temp.inf
+echo AuditSystemEvents = 3 >> temp.inf
+echo AuditLogonEvents = 3 >> temp.inf
+echo AuditPolicyChange = 1 >> temp.inf
+echo AuditAccountManage = 1 >> temp.inf
+echo AuditDSAccess = 1 >> temp.inf
+echo AuditAccountLogon = 1 >> temp.inf
+echo [Version] >> temp.inf
+echo signature="$CHICAGO$" >> temp.inf
+echo Revision=1 >> temp.inf
+echo [Registry Values] >> temp.inf
+echo MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\ShutdownWithoutLogon=4,0 >> temp.inf
+secedit /configure /db test.sdb /cfg temp.inf
+del deleteme.sdb
+del temp.inf
+
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" /v "AutoShareWks" /t REG_DWORD /d 0 /f
+reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v "ScreenSaveActive" /t REG_SZ /d 1 /f
+reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v "ScreenSaverIsSecure" /t REG_SZ /d 1 /f
+reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v "ScreenSaveTimeOut" /t REG_SZ /d 600 /f
+reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v "SCRNSAVE.EXE" /t REG_SZ /d "C:\Windows\system32\ssText3d.scr" /f
+
+:EXIT
+endlocal
+pause > nul
