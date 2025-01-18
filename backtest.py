@@ -4,18 +4,48 @@ import yaml
 from collections import namedtuple
 import copy
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import jwt
 import uuid
 import hashlib
 from urllib.parse import urlencode
+import dotenv
+import os
+
+dotenv_file = dotenv.find_dotenv()
+dotenv.load_dotenv(dotenv_file)
 
 with open(r'backtest.cfg', encoding='UTF-8') as f:
     _cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-_last_auth_time = datetime.now()
-_autoReAuth = False
+import pymysql
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+ID_db = os.getenv('ID_mariadb')
+PW_db = os.getenv('PW_mariadb')
+host_db = os.getenv('host_mariadb')
+port_db = os.getenv('port_mariadb')
+name_db = os.getenv('name_mariadb')
+engine = create_engine("mysql+pymysql://" + ID_db + ":" + PW_db + "@" + host_db + ":" + port_db + "/" + name_db, pool_size=5, max_overflow=5, echo=True)
+
+from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.sql import func
+
+Base = declarative_base()
+
+class Authorization(Base):
+    __tablename__ = 'authorization'
+    access_token = Column(String, primary_key=True)
+    expiration = Column(DateTime)
+
+
+Session = sessionmaker(bind=engine)
+session = Session()
+
+results = session.query(Authorization).filter().first()
+print("results: ", str(results))
 
 default_headers = {
         }
@@ -26,132 +56,73 @@ class Stock:
                 "Content-Type": "application/json",
                 "Accept": "text/plain",
                 "charset": "UTF-8",
-                'User-Agent': _cfg['my_agent']
+                "User-Agent": _cfg['my_agent'],
+                "appkey": os.getenv('app_key'),
+                "appsecret": os.getenv('app_secret'),
             }
-        self.app_token = None
+        self.access_token = None
 
     def getDefaultHeaders(self):
         return self.default_headers
         
     def auth(self):
-        url = f'{_cfg["prod"]}/oauth2/tokenP'
-        headers = self.getDefaultHeaders()
-        body = {
-                "grant_type": "client_credentials",
-                }
-        body["appkey"] = _cfg['app_key']
-        body["appsecret"] = _cfg['app_secret']
-        response = requests.post(url, headers = headers, data = json.dumps(body), verify = False)
-        print("response: ", response.text)
-        if response.status_code == 200:
-            self.app_token = response.json()['access_token']
-            print("app_token: ", app_token)
+        authorization = session.query(Authorization).filter().first()
+        if authorization == None or (datetime.now() - authorization.expiration)>timedelta(days=1):
+            url = f'{_cfg["prod"]}/oauth2/tokenP'
+            headers = self.getDefaultHeaders()
+            body = {
+                    "grant_type": "client_credentials",
+                        }
+            body["appkey"] = os.getenv('app_key')
+            body["appsecret"] = os.getenv('app_secret')
+            response = requests.post(url, headers = headers, data = json.dumps(body), verify = True)
+            print("response: ", response.text)
+            if response.status_code == 200:
+                self.access_token = response.json()['access_token']
+                print("access_token: ", self.access_token)
+                self.expiration = response.json()['access_token_token_expired']
+                authorization = Authorization(access_token = self.access_token, expiration=self.expiration)
+                session.add(authorization)
+                session.commit()
+            else:
+                print('Get Authentitation token fail!\nYou have to restart your app!')
+
         else:
-            print('Get Authentitation token fail!\nYou have to restart your app!')
+            self.access_token = authorization.access_token
+
+    def getDailyPrice(self, stock_no, start, end):
+        url = f'{_cfg["prod"]}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice'
+        headers = self.getDefaultHeaders()
+        headers["authorization"] = f'Bearer {self.access_token}'
+        print("authorization: ", headers["authorization"])
+        headers["tr_id"] = "FHKST03010100"
+        headers["custtype"]= "P"
+
+        params = {
+                "FID_COND_MRKT_DIV_CODE": "J",
+                "FID_INPUT_ISCD": stock_no,
+                "FID_INPUT_DATE_1": start,
+                "FID_INPUT_DATE_2": end,
+                "FID_PERIOD_DIV_CODE": "D",
+                "FID_ORG_ADJ_PRC": 1,
+        }
+        response = requests.get(url, headers = headers, params = params, verify = True)
+        print("response: ", response.text)
 
 stock = Stock()
 stock.auth()
+stock.getDailyPrice("04020000", "20230930", "20230930")
 
-
-#### 위에 작성
-#def _getBaseHeader():
-#    if _autoReAuth: reAuth()
-#    return copy.deepcopy(_base_headers)
-#
-#def _getResultObject(json_data):
-#    _tc_ = namedtuple('res', json_data.keys())
-#    return _tc_(**json_data)
-#
-#def auth(svr='prod', product='01'):
-#    body = {
-#            "grant_type": "client_credentials",
-#            }
-#    print(svr)
-#    if svr == 'prod':
-#        ak1 = 'app_key'
-#        ak2 = 'app_secret'
-#    elif svr == 'vps':
-#        ak1 = 'paper_app'
-#        ak2 = 'paper_sec'
-#
-#    body["appkey"] = _cfg[ak1]
-#    body["appsecret"] = _cfg[ak2]
-#
-#    url = f'{_cfg[svr]}/oauth2/tokenP'
-#
-#    response = requests.post(url, headers = _getBaseHeader(), data = json.dumps(body))
-#
-#    if response.status_code == 200:
-#        my_token = _getResultObject(response.json()).access_token
-#        print("my_token: " + my_token)
-#    else:
-#        print('Get Authentication token fail!\nYou have to restart your app!')
-#        return
-#
-#def _url_fetch(api_url, ptr_id, param, appendHeaders=None, postFlag=False):
-#    url = f"{getTREnv().my_url}{api_url}"
-#    headers = _getBaseHeader()
-#
-#    # 추가 header 설정
-#    tr_id = ptr_id
-#    if ptr_id[0] in {'T', 'J', 'C'}:
-#        if isPaperTrading():
-#            tr_id = 'V' + ptr_id[1:]
-#
-#    headers["tr_id"] = tr_id
-#    headers["custtype"] = "P"
-#
-#    if appendHeaders is not None:
-#        if len(appendHeaders) > 0:
-#            for x in appendHeaders.keys():
-#                headers[x] = appendHeaders.get(x)
-#    if(_DEBUG):
-#        print("< Sending Info >")
-#        print(f"URL: {url}, TR: {tr_id}")
-#        print(f"<header>\n{headers}")
-#        print(f"<body>\n{params}")
-#
-#    if (postFlag):
-#        if(hashFlag):
-#            set_order_hash_key(headers, params)
-#        response = requests.post(url, headers=headers, data=json.dumps(params))
-#    else:
-#        response = requests.get(url, headers=headers, params=params)
-#
-#    if response.status_code ==200:
-#        ar = APIResp(response)
-#        if(_DEBUG):
-#            ar.printAll()
-#        return ar
-#    else:
-#        print("Error Code: " + str(response.status_code) + " | " + response.text)
-#        return None
-#def get_stock_history(stock_no, gb_cd='D'):
-#    url = "/uapi/domestic-stock/v1/quotations/inquire-daily-price"
-#    tr_id = "FHKST01010400"
-#    params = {
-#            "FID_COND_MRKT_DIV_CODE": _getStockDiv(stock_no),
-#            "FID_INPUT_ISCD": stock_no,
-#            "FID_PERIOD_DIV_CODE": gb_cd,
-#            "FID_ORG_ADJ_PRC": "0000000001"
-#            }
-#    t1 = _url_fetch(url, tr_id, params)
-#
-#    if t1.isOK():
-#        return pd.DataFrame(t1.getBody().output)
-#    else:
-#        t1.printError()
-#        return pd.DataFrame()
-#    # _url_fetch
-#    # _isOK()
-#    # printError()
-#
-## 종목의 주식, ETF 선물/옵션 등의 구분값을 반환. 현재는 무조건 주식(J)만 반환
-#def _getStockDid edit mode에서 nerd라고 치면 NERDTree가 나왔다 사라졌다. 함2(stock_no):
-#    return 'J'
-#
 class CryptoCurrency():
+    def __init__(self):
+        self.default_headers = {
+                "accept": "application/json",
+            }
+        self.authorization_token = None
+    def getDefaultHeaders(self):
+        return self.default_headers
     def auth(self):
+        # auth 는 미완성입니다. 안만들어도 조회는 되니까.
         m = hashlib.sha512()
         m.update(urlencode(query).encode())
         query_hash = m.hexdigest()
@@ -163,8 +134,19 @@ class CryptoCurrency():
                 'query_hash_alg': 'SHA512',
                 }
         jwt_token = jwt.encode(payload, 'Secret_key')
-        authorization_token = 'Bearer {}'.format(jwt_token)
-        return authorization_token
+        self.authorization_token = 'Bearer {}'.format(jwt_token)
+
+    def getDailyPrice(self, item, datetime):
+        url = f'{_cfg["host_upbit"]}/v1/candles/days'
+        headers = self.getDefaultHeaders()
+        params = {
+                "market": item,
+                "to": datetime,
+                "count": "1",
+                "convertingPriceUnit": "KRW",
+        }
+        response = requests.get(url, headers = headers, params = params)
+        print(response.text)
 
 cryptoCurrency = CryptoCurrency()
-cryptoCurrency.auth()
+cryptoCurrency.getDailyPrice("KRW-BTC", "2023-10-27 09:00:00")

