@@ -1,6 +1,5 @@
 import requests
 import json
-import yaml
 from collections import namedtuple
 import copy
 import pandas as pd

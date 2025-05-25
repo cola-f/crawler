@@ -1123,3 +1123,131 @@
 2025-05-23 06:58:21,850 - root - INFO - ETH: 0.7345259999999999	3486000	2560557.6359999995	0.40425853991163335
 2025-05-23 06:58:21,850 - root - INFO - XRP: 2037.8576049999983	846.3	1724638.8911114985	9.814228408698085e-05
 2025-05-23 06:58:21,850 - root - INFO - KRW: 1751079.739501
+2025-05-24 00:17:33,561 - root - INFO - backtest
+2025-05-24 00:17:33,571 - root - INFO - BTC: 0.031982	93803000.0	3000007.5459999996	9.3803
+2025-05-24 00:17:33,571 - root - INFO - ETH: 0	5241000.0	0.0	0.5241
+2025-05-24 00:17:33,571 - root - INFO - XRP: 0	734.4	0.0	7.344e-05
+2025-05-24 00:17:33,571 - root - INFO - KRW: 6999992.454
+2025-05-24 00:17:33,572 - root - INFO - BTC: 0.031982	93803000.0	3000007.5459999996	9.3803
+2025-05-24 00:17:33,573 - root - INFO - ETH: 0.57241	5241000.0	3000000.81	0.5241
+2025-05-24 00:17:33,573 - root - INFO - XRP: 0	734.4	0.0	7.344e-05
+2025-05-24 00:17:33,573 - root - INFO - KRW: 3999991.644
+2025-05-24 00:17:33,574 - root - INFO - BTC: 0.031982	93803000.0	3000007.5459999996	9.3803
+2025-05-24 00:17:33,574 - root - INFO - ETH: 0.57241	5241000.0	3000000.81	0.5241
+2025-05-24 00:17:33,574 - root - INFO - XRP: 2723.311547	734.4	2000000.0001167997	7.344e-05
+2025-05-24 00:17:33,574 - root - INFO - KRW: 1999991.6438832001
+2025-05-24 01:28:01,826 - root - INFO - 
+2025-05-24 01:29:33,706 - root - INFO - 
+2025-05-24 01:30:04,160 - root - INFO - 
+2025-05-24 01:30:24,493 - root - INFO - 
+2025-05-24 01:31:22,270 - root - INFO - 
+2025-05-24 13:54:43,454 - root - INFO - backtest
+2025-05-24 13:57:08,294 - root - INFO - backtest
+2025-05-24 13:57:08,298 - root - INFO - BTC: 0.031982	93803000.0	3000007.5459999996	9.3803
+2025-05-24 13:57:08,298 - root - INFO - ETH: 0	5241000.0	0.0	0.5241
+2025-05-24 13:57:08,299 - root - INFO - XRP: 0	734.4	0.0	7.344e-05
+2025-05-24 13:57:08,299 - root - INFO - KRW: 6999992.454
+2025-05-24 13:57:08,300 - root - INFO - BTC: 0.031982	93803000.0	3000007.5459999996	9.3803
+2025-05-24 13:57:08,300 - root - INFO - ETH: 0.57241	5241000.0	3000000.81	0.5241
+2025-05-24 13:57:08,300 - root - INFO - XRP: 0	734.4	0.0	7.344e-05
+2025-05-24 13:57:08,300 - root - INFO - KRW: 3999991.644
+2025-05-24 13:57:08,301 - root - INFO - BTC: 0.031982	93803000.0	3000007.5459999996	9.3803
+2025-05-24 13:57:08,302 - root - INFO - ETH: 0.57241	5241000.0	3000000.81	0.5241
+2025-05-24 13:57:08,302 - root - INFO - XRP: 2723.311547	734.4	2000000.0001167997	7.344e-05
+2025-05-24 13:57:08,302 - root - INFO - KRW: 1999991.6438832001
+2025-05-24 14:25:07,843 - root - INFO - backtest
+2025-05-24 21:41:37,685 - root - INFO - backtest
+2025-05-24 21:44:43,239 - root - INFO - backtest
+2025-05-24 21:48:43,272 - root - INFO - backtest
+2025-05-24 21:57:09,532 - root - INFO - backtest
+2025-05-24 21:57:47,516 - root - INFO - backtest
+2025-05-24 22:00:30,637 - root - INFO - backtest
+2025-05-24 22:06:10,175 - root - INFO - backtest
+2025-05-24 22:08:12,990 - root - INFO - backtest
+2025-05-24 22:10:40,095 - root - INFO - backtest
+2025-05-24 22:11:23,960 - root - INFO - backtest
+2025-05-24 22:15:15,062 - root - INFO - backtest
+2025-05-24 22:17:19,374 - root - INFO - backtest
+2025-05-24 22:19:06,726 - root - INFO - backtest
+2025-05-24 22:20:39,758 - root - INFO - backtest
+2025-05-24 22:23:00,397 - root - INFO - backtest
+2025-05-24 22:24:24,195 - root - INFO - backtest
+2025-05-24 22:29:22,523 - root - INFO - backtest
+2025-05-24 22:34:47,546 - root - INFO - backtest
+2025-05-24 22:42:34,976 - root - INFO - backtest
+2025-05-24 22:43:45,880 - root - INFO - backtest
+2025-05-24 22:44:14,727 - root - INFO - backtest
+2025-05-24 22:47:24,419 - root - INFO - backtest
+2025-05-24 22:48:55,626 - root - INFO - backtest
+2025-05-24 22:58:40,418 - root - INFO - backtest
+2025-05-24 23:02:21,297 - root - INFO - backtest
+2025-05-24 23:02:25,257 - root - INFO - backtest
+2025-05-24 23:02:27,929 - root - INFO - backtest
+2025-05-24 23:04:15,616 - root - INFO - backtest
+2025-05-24 23:10:17,247 - root - INFO - backtest
+2025-05-24 23:11:40,783 - root - INFO - backtest
+2025-05-24 23:12:37,047 - root - INFO - backtest
+2025-05-24 23:15:29,479 - root - INFO - backtest
+2025-05-24 23:17:02,157 - root - INFO - backtest
+2025-05-24 23:21:09,365 - root - INFO - backtest
+2025-05-24 23:23:41,485 - root - INFO - backtest
+2025-05-24 23:24:26,430 - root - INFO - backtest
+2025-05-24 23:24:58,834 - root - INFO - backtest
+2025-05-24 23:25:52,629 - root - INFO - backtest
+2025-05-24 23:26:14,103 - root - INFO - backtest
+2025-05-24 23:26:33,055 - root - INFO - backtest
+2025-05-24 23:26:49,735 - root - INFO - backtest
+2025-05-24 23:27:29,790 - root - INFO - backtest
+2025-05-24 23:28:27,807 - root - INFO - backtest
+2025-05-24 23:29:02,150 - root - INFO - backtest
+2025-05-24 23:29:19,159 - root - INFO - backtest
+2025-05-24 23:29:51,138 - root - INFO - backtest
+2025-05-24 23:30:22,179 - root - INFO - backtest
+2025-05-24 23:32:02,223 - root - INFO - backtest
+2025-05-24 23:32:28,574 - root - INFO - backtest
+2025-05-24 23:32:39,303 - root - INFO - backtest
+2025-05-24 23:36:29,988 - root - INFO - backtest
+2025-05-24 23:36:39,751 - root - INFO - backtest
+2025-05-24 23:36:50,734 - root - INFO - backtest
+2025-05-24 23:37:21,086 - root - INFO - backtest
+2025-05-24 23:37:24,942 - root - INFO - backtest
+2025-05-24 23:41:03,302 - root - INFO - backtest
+2025-05-24 23:43:02,711 - root - INFO - backtest
+2025-05-24 23:48:17,638 - root - INFO - backtest
+2025-05-24 23:51:00,607 - root - INFO - backtest
+2025-05-24 23:51:27,231 - root - INFO - backtest
+2025-05-24 23:51:31,406 - root - INFO - backtest
+2025-05-24 23:51:54,270 - root - INFO - backtest
+2025-05-24 23:53:37,150 - root - INFO - backtest
+2025-05-24 23:53:42,118 - root - INFO - backtest
+2025-05-24 23:54:19,631 - root - INFO - backtest
+2025-05-24 23:55:36,423 - root - INFO - backtest
+2025-05-24 23:55:50,758 - root - INFO - backtest
+2025-05-24 23:58:08,119 - root - INFO - backtest
+2025-05-25 00:00:33,950 - root - INFO - backtest
+2025-05-25 00:01:35,439 - root - INFO - backtest
+2025-05-25 00:04:19,296 - root - INFO - backtest
+2025-05-25 00:04:39,823 - root - INFO - backtest
+2025-05-25 00:05:12,416 - root - INFO - backtest
+2025-05-25 00:08:21,913 - root - INFO - backtest
+2025-05-25 00:08:33,968 - root - INFO - backtest
+2025-05-25 00:11:27,146 - root - INFO - backtest
+2025-05-25 01:58:43,371 - root - INFO - backtest
+2025-05-25 02:04:40,691 - root - INFO - backtest
+2025-05-25 02:04:45,915 - root - INFO - backtest
+2025-05-25 02:04:48,363 - root - INFO - backtest
+2025-05-25 02:04:49,643 - root - INFO - backtest
+2025-05-25 02:04:53,496 - root - INFO - 
+2025-05-25 02:05:59,228 - root - INFO - backtest
+2025-05-25 02:08:18,307 - root - INFO - backtest
+2025-05-25 02:11:50,444 - root - INFO - backtest
+2025-05-25 02:12:24,235 - root - INFO - backtest
+2025-05-25 21:17:02,268 - root - INFO - backtest
+2025-05-25 21:28:04,461 - root - INFO - backtest
+2025-05-25 21:29:42,564 - root - INFO - backtest
+2025-05-25 21:32:58,158 - root - INFO - backtest
+2025-05-25 21:33:19,379 - root - INFO - backtest
+2025-05-25 21:33:33,940 - root - INFO - backtest
+2025-05-25 21:37:38,335 - root - INFO - 
+2025-05-25 21:45:25,801 - root - INFO - 
+2025-05-25 21:48:23,235 - root - INFO - backtest
