@@ -1251,3 +1251,108 @@
 2025-05-25 21:37:38,335 - root - INFO - 
 2025-05-25 21:45:25,801 - root - INFO - 
 2025-05-25 21:48:23,235 - root - INFO - backtest
+2025-05-26 21:32:05,033 - root - INFO - backtest
+2025-05-26 21:32:11,409 - root - INFO - 
+2025-05-26 21:32:29,706 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-19' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:145> exception=NameError("name 'portfolio' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 163, in rebalanceLoop
+    for item in portfolio:
+                ^^^^^^^^^
+NameError: name 'portfolio' is not defined
+2025-05-26 21:32:55,367 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-5' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:145> exception=TypeError('list indices must be integers or slices, not str')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 164, in rebalanceLoop
+    self.assets[item] = {"volume": accounts[item]["balance"], "price": prices.get(item, 0)}
+                                   ~~~~~~~~^^^^^^
+TypeError: list indices must be integers or slices, not str
+2025-05-26 21:50:51,139 - root - INFO - backtest
+2025-05-26 21:52:52,321 - root - INFO - backtest
+2025-05-26 21:55:39,930 - root - INFO - backtest
+2025-05-26 21:58:37,668 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-74' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:145> exception=NameError("name 'portfolio' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 163, in rebalanceLoop
+    for item in portfolio:
+                ^^^^^^^^^
+NameError: name 'portfolio' is not defined
+2025-05-26 21:59:00,739 - root - INFO - 
+2025-05-26 21:59:03,676 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-9' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:145> exception=TypeError('list indices must be integers or slices, not str')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 164, in rebalanceLoop
+    self.assets[item] = {"volume": accounts[item]["balance"], "price": prices.get(item, 0)}
+                                   ~~~~~~~~^^^^^^
+TypeError: list indices must be integers or slices, not str
+2025-05-26 22:03:26,107 - root - INFO - 
+2025-05-26 22:29:30,345 - root - INFO - 
+2025-05-26 22:29:32,722 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-10' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:147> exception=HTTPError('404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 158, in rebalanceLoop
+    res.raise_for_status()
+  File "/Users/colaf/Desktop/crawler/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=
+2025-05-26 22:30:54,798 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-8' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:147> exception=HTTPError('404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 159, in rebalanceLoop
+    res.raise_for_status()
+  File "/Users/colaf/Desktop/crawler/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=
+2025-05-26 22:32:34,869 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:147> exception=TypeError("'str' object is not callable")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 159, in rebalanceLoop
+    print(res.text())
+          ^^^^^^^^^^
+TypeError: 'str' object is not callable
+2025-05-26 22:33:52,230 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:147> exception=HTTPError('404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 160, in rebalanceLoop
+    res.raise_for_status()
+  File "/Users/colaf/Desktop/crawler/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=
+2025-05-26 22:37:54,522 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:147> exception=HTTPError('404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 161, in rebalanceLoop
+    res.raise_for_status()
+  File "/Users/colaf/Desktop/crawler/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=
+2025-05-26 22:38:39,045 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:147> exception=HTTPError('404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 161, in rebalanceLoop
+    res.raise_for_status()
+  File "/Users/colaf/Desktop/crawler/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=
+2025-05-26 22:39:08,913 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-6' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:147> exception=HTTPError('404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 161, in rebalanceLoop
+    res.raise_for_status()
+  File "/Users/colaf/Desktop/crawler/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error:  for url: https://api.upbit.com/v1/ticker?markets=
+2025-05-26 22:41:14,437 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:148> exception=TypeError('can only concatenate str (not "float") to str')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 173, in rebalanceLoop
+    messageStack.append(item + ": {volume: " + self.assets[item]["volume"] + ", price: " + self.assets[item]["price"] + "}")
+                        ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TypeError: can only concatenate str (not "float") to str
+2025-05-26 22:42:15,077 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-6' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:148> exception=TypeError('can only concatenate str (not "float") to str')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 187, in rebalanceLoop
+    messageStack.append(item + "을 " + price + "에 " + quantity + "개 판매한다.")
+                        ~~~~~~~~~~~~~^~~~~~~
+TypeError: can only concatenate str (not "float") to str

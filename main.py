@@ -42,19 +42,37 @@ queue_lock = asyncio.Lock()
 
 class Invest:
     assets = {"BTC": 0, "ETH": 0, "XRP": 0, "KRW": 0}
-    portfolio = {"BTC": 0.4, "ETH": 0.4, "XRP": 0.1}
+    portfolio = {}
+    allowedDeviation = {"BTC": (0.98, 1.02), "ETH": (0.98, 1.02), "XRP": (0.98, 1.02)}
     record = {}
+    value = pd.DataFrame()
     automation = False
+    rebalanceTask = {}
     def __init__(self, krw):
-        self.assets["KRW"] = krw
-        print(self.assets)
+        self.assets["KRW"] = {"volume": krw, "price": 1}
+        self.portfolio = {"BTC": 0.3, "ETH": 0.3, "XRP": 0.2}
+        allowedDeviation = {"BTC": (0.98, 1.02), "ETH": (0.98, 1.02), "XRP": (0.98, 1.02)}
+        for item in self.portfolio:
+            self.assets[item] = {"volume": 0, "price": 0}
+            self.record[item] = pd.DataFrame({
+                "candle_date_time_kst": pd.Series(dtype='datetime64[ns]'),
+                "trade_price": pd.Series(dtype='float'),
+                "trade_quantity": pd.Series(dtype='float'),
+                "quantity": pd.Series(dtype='float'),
+                "backtest_trade_quantity": pd.Series(dtype = 'float'),
+                "backtest_quantity": pd.Series(dtype='float')
+                })
+            self.record[item].set_index("candle_date_time_kst", inplace = True)
+        self.value = pd.DataFrame({
+            "candle_date_time_kst": pd.Series(dtype = 'datetime64[ns]'),
+            "KRW": pd.Series(dtype='float')
+            })
+        self.value.set_index("candle_date_time_kst", inplace = True)
 
     async def initialize(self, krw):
         async with queue_lock:
-            self.assets["KRW"] = krw
-            for item in self.portfolio:
-                self.assets[item] = 0
-            messageStack.append("Initialized");
+            self.assets["KRW"] = {"volume": krw, "price": 1}
+
     async def setPortfolio(self, portfolio):
         async with queue_lock:
             self.portfolio = portfolio
@@ -80,29 +98,18 @@ class Invest:
                 pd.DataFrame({"message": ["No data"]}).to_excel(writer, sheet_name="Empty", index=False)
 
 
-    def valueSum(self, date_dt):
+    def valueSum(self):
         sum = 0
-        for item in self.assets:
-            if item == "KRW":
-                sum += self.assets[item]
-            else:
-                price = self.record[item].loc[date_dt, "trade_price"]
-                sum+=price * float(self.assets[item])
+        for item in self.portfolio:
+            
+            sum += self.assets[item]["price"] * float(self.assets[item]["volume"])
+        sum += self.assets["KRW"]["volume"] * self.assets["KRW"]["price"]
         return sum
 
     async def getOhlcv(self, start_dt, end_dt):
         # 10분단위로 필터링하는 코드가 필요
         dates = pd.date_range(start_dt, end_dt, freq = "10min")[::-1]
         for item in self.portfolio:
-            if item not in self.record:
-                self.record[item] = pd.DataFrame({
-                    "candle_date_time_kst": pd.Series(dtype='datetime64[ns]'),
-                    "trade_price": pd.Series(dtype='float'),
-                    "trade_quantity": pd.Series(dtype='float'),
-                    "backtest_quantity": pd.Series(dtype='float')
-                    })
-                self.record[item].set_index("candle_date_time_kst", inplace = True)
-    
             for date in dates:
                 if date not in self.record[item].index:
                     await queue_lock.acquire()
@@ -138,49 +145,175 @@ class Invest:
                     queue_lock.release()
                     await asyncio.sleep(0.1)
 
-    async def rebalance(self, date_dt = None):
+    async def rebalanceLoop(self):
         async with queue_lock:
-            allowedDeviation = {"BTC": (0.98, 1.02), "ETH": (0.98, 1.02), "XRP": (0.98, 1.02)}
-            if date_dt == None and self.automation == True:
-                messageStack.append("자동매매 중")
+            automation = self.automation
+        while automation:
+            async with queue_lock:
+                messageStack.append("Rebalancing")
+            payload = {'access_key': UPBIT_ACCESS_KEY, 'nonce': str(uuid.uuid4())}
+            jwt_token = jwt.encode(payload, UPBIT_SECRET_KEY, algorithm='HS256')
+            url="https://api.upbit.com/v1/ticker"
+            params = {"markets": ",".join(f"KRW-{m}" for m in self.portfolio)}
+            res.raise_for_status()
+            prices = {item["market"].split("-")[1]: item["trade_price"] for item in res.json()}
+            url = "https://api.upbit.com/v1/accounts"
+            headers = {"Authorization": f"Bearer {jwt_token}"}
+            res = requests.get(url, headers=headers)
+            res.raise_for_status()
+            accounts = res.json()
+            volumes = {item["currency"]: float(item["balance"]) for item in accounts}
+            async with queue_lock:
                 for item in self.portfolio:
-                    print("")
+                    self.assets[item] = {"volume": volumes.get(item, 0), "price": prices.get(item, 0)}
+                    messageStack.append(item + ": {volume: " + str(self.assets[item]["volume"]) + ", price: " + str(self.assets[item]["price"]) + "}")
+                self.assets["KRW"] = {"volume": volumes.get("KRW", 0), "price": 1}
+                messageStack.append("KRW: {volume: " + str(self.assets["KRW"]["volume"]) + ", price: " + str(self.assets["KRW"]["price"]) + "}")
                 
-            else:
                 for item in self.portfolio:
-                    price = self.record[item].loc[date_dt, "trade_price"]
-                    totalValue = self.valueSum(date_dt)
-                    if price * self.assets[item] < totalValue*self.portfolio[item]*allowedDeviation[item][0]:
-                        # buy
-                        quantity = round((totalValue * self.portfolio[item] - price * self.assets[item])/price, 6)
-                        self.assets[item] += quantity
-                        self.assets["KRW"] -= quantity * price
-                        self.record[item].loc[date_dt, "backtest_quantity"] = quantity
-                        messageStack.append("@" + str(date_dt) + ";" + item + ": [" + str(quantity) + "] [" + str(price) + "]")
-                    elif totalValue*self.portfolio[item] * allowedDeviation[item][1] < price * self.assets[item]:
-                        # sell
-                        quantity = round((price * self.assets[item] - totalValue * self.portfolio[item])/price, 6)
-                        self.assets[item] -= quantity
-                        self.assets["KRW"] += quantity * price
-                        self.record[item].loc[date_dt, "backtest_quantity"] = -quantity
-                        messageStack.append("@" + str(date_dt) + ";" + item + ": [" + str(-quantity) + "] [" + str(price) + "]")
+                    price = self.assets[item]["price"]
+                    volume = self.assets[item]["volume"]
+                    valueSum = self.valueSum()
+                    if price * volume < valueSum * self.portfolio[item] * self.allowedDeviation[item][0]:
+                        #buy
+                        quantity = round((valueSum * self.portfolio[item] - price * self.assets[item]["volume"])/price, 6)
+                        orderData = {
+                                'market': f"KRW-{item}",
+                                'side': 'bid',
+                                'volume': quantity,
+                                'price': price,
+                                'ord_type': 'limit'
+                                }
+                        query_string = urlencode(orderData).encode()
+                        m = hashlib.sha512()
+                        m.update(query_string)
+                        query_hash = m.hexdigest()
+                        payload = {
+                                'access_key': UPBIT_ACCESS_KEY,
+                                'nonce': str(uuid.uuid4()),
+                                'query_hash': query_hash,
+                                'query_hash_alg': 'SHA512',
+                                }
+                        jwt_token = jwt.encode(payload, UPBIT_SECRET_KEY, algorithm='HS256')
+                        if isinstance(jwt_token, bytes):
+                            jwt_token = jwt_token.decode("utf-8")
+                        url = "https://api.upbit.com/v1/orders"
+                        headers = {
+                                'Authorization': f'Bearer {jwt_token}',
+                                'Content-Type': 'application/json'
+                                }
+                        response = requests.post(url, json=orderData, headers=headers)
+                        if response.status_code == 201:
+                            messageStack.append(item + "을 " + str(price) + "에 " + str(quantity) + "개 구매를 주문한다.")
+                        else:
+                            messageStack.append(f"❌ 오류 발생: {response.status_code} - {response.text}")
+                    elif valueSum * self.portfolio[item] * self.allowedDeviation[item][1] < price * volume:
+                        quantity = round((price * volume - valueSum * self.portfolio[item])/price, 6)
+                        orderData = {
+                                'market': f"KRW-{item}",
+                                'side': 'ask',
+                                'volume': quantity,
+                                'price': price,
+                                'ord_type': 'limit'
+                                }
+                        query_string = urlencode(orderData).encode()
+                        m = hashlib.sha512()
+                        m.update(query_string)
+                        query_hash = m.hexdigest()
+                        payload = {
+                                'access_key': UPBIT_ACCESS_KEY,
+                                'nonce': str(uuid.uuid4()),
+                                'query_hash': query_hash,
+                                'query_hash_alg': 'SHA512',
+                                }
+                        jwt_token = jwt.encode(payload, UPBIT_SECRET_KEY, algorithm='HS256')
+                        if isinstance(jwt_token, bytes):
+                            jwt_token = jwt_token.decode("utf-8")
+                        url = "https://api.upbit.com/v1/orders"
+                        headers = {
+                                'Authorization': f'Bearer {jwt_token}',
+                                'Content-Type': 'application/json'
+                                }
+                        response = requests.post(url, json=orderData, headers=headers)
+                        if response.status_code == 201:
+                            messageStack.append(item + "을 " + str(price) + "에 " + str(quantity) + "개 판매를 주문한다.")
+                        else:
+                            messageStack.append(f"❌ 오류 발생: {response.status_code} - {response.text}")
+                        messageStack.append(item + "을 " + str(price) + "에 " + str(quantity) + "개 판매한다.")
                     else:
-                        self.record[item].loc[date_dt, "backtest_quantity"] = 0
+                        messageStack.append("주문만 한다.")
+
+
+            await asyncio.sleep(540)
+            payload = {
+                    'access_key': UPBIT_ACCESS_KEY,
+                    'nonce': str(uuid.uuid4())
+                    }
+            jwt_token = jwt.encode(payload, UPBIT_SECRET_KEY, algorithm='HS256')
+            if isinstance(jwt_token, bytes):
+                jwt_token = jwt_token.decode("utf-8")
+            url = "https://api.upbit.com/v1/orders"
+            headers = {
+                    "Authorization": f"Bearer {jwt_token}",
+                    }
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            openOrders = response.json()
+            if not openOrders:
+                async with queue_lock:
+                    messageStack.append("🟢 취소할 미체결 주문이 없습니다.")
+            else:
+                async with queue_lock:
+                    messageStack.append(f"🔎 총 {len(openOrders)}개의 주문을 취소합니다.")
+                for order in openOrder:
+                    cancelOrder(order["uuid"])
+            async with queue_lock:
+                automation = self.automation
+            
+    async def rebalance(self, date_dt):
+        async with queue_lock:
+            self.allowedDeviation = {"BTC": (0.98, 1.02), "ETH": (0.98, 1.02), "XRP": (0.98, 1.02)}
+            for item in self.portfolio:
+                self.assets[item]["price"] = self.record[item].loc[date_dt, "trade_price"]
+            for item in self.portfolio:
+                volume = self.assets[item]["volume"]
+                price = self.assets[item]["price"]
+                valueSum = self.valueSum()
+                if price * volume < valueSum*self.portfolio[item]*allowedDeviation[item][0]:
+                    # buy
+                    quantity = round((valueSum * self.portfolio[item] - price * volume)/price, 6)
+                    self.assets[item]["volume"] += quantity
+                    self.assets["KRW"]["volume"] -= quantity * price
+                    self.record[item].loc[date_dt, "backtest_trade_quantity"] = quantity
+                    self.record[item].loc[date_dt, "backtest_quantity"] = self.assets[item]["volume"]
+                    messageStack.append("@" + str(date_dt) + ";" + item + ": [" + str(quantity) + "] [" + str(price) + "]")
+                elif valueSum*self.portfolio[item] * allowedDeviation[item][1] < price * volume:
+                    # sell
+                    quantity = round((price * volume - valueSum * self.portfolio[item])/price, 6)
+                    self.assets[item]["volume"] -= quantity
+                    self.assets["KRW"]["volume"] += quantity * price
+                    self.record[item].loc[date_dt, "backtest_trade_quantity"] = -quantity
+                    self.record[item].loc[date_dt, "backtest_quantity"] = self.assets[item]["volume"]
+                    messageStack.append("@" + str(date_dt) + ";" + item + ": [" + str(-quantity) + "] [" + str(price) + "]")
+                else:
+                    self.record[item].loc[date_dt, "backtest_trade_quantity"] = 0
+                    self.record[item].loc[date_dt, "backtest_quantity"] = self.assets[item]["volume"]
+            self.value.loc[date_dt, "KRW"] = self.valueSum()
     
-    async def status(self, date_dt):
+    async def status(self):
         async with queue_lock:
             for item in self.assets:
                 if item != "KRW":
-                    quantity = self.assets[item]
-                    price = self.record[item].loc[date_dt, "trade_price"]
+                    quantity = self.assets[item]["volume"]
+                    price = self.assets[item]["price"]
                     value = quantity * price
-                    ratio = price / self.valueSum(date_dt)
+                    ratio = price / self.valueSum()
                     logger.info(item  + ": " + str(quantity) + "\t" + str(price) + "\t" + str(value) + "\t" + str(ratio))
                     messageStack.append(item + ": " + str(quantity) + "\t" + str(price) + "\t" + str(value) + "\t" + str(ratio))
                 else:
-                    logger.info(item + ": " + str(self.assets[item]))
-                    messageStack.append(item + ": " + str(self.assets[item]))
-            print("Total: " + str(self.valueSum(date_dt)))
+                    logger.info(item + ": " + str(self.assets[item]["volume"]))
+                    messageStack.append(item + ": " + str(self.assets[item]["volume"]))
+            print("Total: " + str(self.valueSum()))
 
     async def backtest(self, start_dt, end_dt):
         async with queue_lock:
@@ -201,9 +334,9 @@ class Invest:
         plt.figure(figsize=(12, 6))
         for item in self.record:
             df = self.record[item][(start_dt <= self.record[item].index)&(self.record[item].index <= end_dt)].copy()
-            df["normalized_price"] = df["trade_price"] / df["trade_price"].iloc[-1]
-            plt.plot(df.index, df["normalized_price"], label=item)
-            for x, normalized_y, y, qty in zip(df.index, df["normalized_price"], df["trade_price"], df["trade_quantity"]):
+            df["normalized_value"] = df["trade_price"] / df["trade_price"].iloc[-1]
+            plt.plot(df.index, df["normalized_value"], label=item)
+            for x, normalized_y, y, qty in zip(df.index, df["normalized_value"], df["trade_price"], df["trade_quantity"]):
                 if pd.notna(qty) & (qty > 0):
                     plt.text(x, normalized_y, f"{y}\n{qty:.6f}", fontsize=8, ha='center', va='bottom', color='red')
                 elif pd.notna(qty) & (qty < 0):
@@ -216,17 +349,7 @@ class Invest:
         plt.grid(True, which="both", linestyle="--", linewidth=0.5)
         plt.tight_layout()
         plt.show()
-    def execute():
-        inputStr = input("자동매매를 실행하시겠습니까?(YES/NO)")
-        if inputStr != "YES":
-            self.automation = False
-            return
-        else:
-            self.automation = True
-        logger.warning("execute")
-        while True:
-            rebalance()
-            time.sleep(600)
+
     async def accounts(self):
         async with queue_lock:
             payload = {
@@ -271,6 +394,22 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # CORS 허용
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+def cancelOrder(uuid):
+    url = "https://api.upbit.com/v1/order"
+    query = {"uuid": uuid}
+    payload = {
+            'access_key': UPBIT_ACCESS_KEY,
+            'nonce': str(uuid.uuid4())
+            }
+    jwt_token = jwt.encode(payload, UPBIT_SECRET_KEY, algorithm='HS256')
+    if isinstance(jwt_token, bytes):
+        jwt_token = jwt_token.decode("utf-8")
+    header = {
+            "Authorization": f"Bearer {jwt_token}",
+            }
+    response = requests.delete(url, headers=headers, params=query)
+    return response
+
 invest = Invest(10000000)
 clients = set()
 
@@ -309,17 +448,11 @@ async def load():
             json[item] = df_clean.to_dict(orient="records")
     return JSONResponse(content = json)
 @app.post("/save")
-async def load():
-    async with queue_lock:
-        messageStack.append("saving")
-        invest.save("./price.xlsx")
-        messageStack.append("done")
-@app.post("/save")
 async def save():
     async with queue_lock:
         messageStack.append("saving")
         invest.save("./price.xlsx")
-        messageStock.append("done")
+        messageStack.append("done")
 
 @app.post("/getOhlcv")
 async def getOhlcv(request: DateRange):
@@ -335,9 +468,8 @@ async def getOhlcv(request: DateRange):
         for item, df in invest.record.items():
             df_clean = df.reset_index()
             df_clean["candle_date_time_kst"] = df_clean["candle_date_time_kst"].dt.strftime('%Y-%m-%dT%H:%M:%S')
-            df_clean["normalized_price"] = df_clean["trade_price"] / df_clean["trade_price"].iloc[-1]
-            df_clean["trade_quantity"] = df_clean["trade_quantity"].fillna(0)
-            df_clean["backtest_quantity"] = df_clean["backtest_quantity"].fillna(0)
+            df_clean["normalized_value"] = df_clean["trade_price"] / df_clean["trade_price"].iloc[-1]
+            df_clean = df_clean[["candle_date_time_kst", "normalized_value", "trade_price"]]
             json[item] = df_clean.to_dict(orient="records")
     return JSONResponse(content = json)
 
@@ -356,12 +488,17 @@ async def backtest(request: backtestData):
     async with queue_lock:
         messageStack.append("✅ 백테스트 완료")
         for item, df in invest.record.items():
+            df["normalized_value"] = df["trade_price"] / df.loc[end_dt, "trade_price"]
             df_clean = df.reset_index()
             df_clean["candle_date_time_kst"] = df_clean["candle_date_time_kst"].dt.strftime('%Y-%m-%dT%H:%M:%S')
-            df_clean["normalized_price"] = df_clean["trade_price"] / df_clean["trade_price"].iloc[-1]
-            df_clean["trade_quantity"] = df_clean["trade_quantity"].fillna(0)
+            df_clean = df_clean[["candle_date_time_kst", "normalized_value", "trade_price", "backtest_trade_quantity", "backtest_quantity"]]
+            df_clean["backtest_trade_quantity"] = df_clean["backtest_trade_quantity"].fillna(0)
             df_clean["backtest_quantity"] = df_clean["backtest_quantity"].fillna(0)
             json[item] = df_clean.to_dict(orient="records")
+        invest.value["normalized_value"] = invest.value["KRW"] / invest.value.loc[start_dt, "KRW"]
+        value_clean = invest.value.reset_index()
+        value_clean["candle_date_time_kst"] = value_clean["candle_date_time_kst"].dt.strftime('%Y-%m-%dT%H:%M:%S')
+        json["value"] = value_clean.to_dict(orient="records")
     return JSONResponse(content = json)
 
 @app.post("/accounts")
@@ -373,3 +510,24 @@ async def accounts():
 async def setPortfolio(request: portfolioData):
     portfolio = request.portfolio
     await invest.setPortfolio(portfolio)
+@app.post("/execute")
+async def execute():
+    async with queue_lock:
+        if not invest.automation:
+            invest.automation = True
+            rebalance_task = asyncio.create_task(invest.rebalanceLoop())
+            messageStack.append("Starting rebalance")
+        else:
+            messageStack.append("Already rebalancing")
+@app.post("/stop")
+async def stop():
+    async with queue_lock:
+        invest.automation = False
+        if invest.rebalanceTask:
+            invest.rebalanceTask.cancel()
+            try:
+                await rebalanceTask
+            except asyncio.CancelledError:
+                messageStack.append("[INFO] 리밸런싱 루프 중지됨")
+        messageStack.append("자동 리밸런싱 중지됨")
+
