@@ -1,46 +1,97 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="utf-8" />
-	<title>자동매매 백테스트</title>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-		<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-		<!-- Chart.js용 Luxon 날짜 어댑터 -->
-	<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
-
+  <meta charset="utf-8">
+  <title>4,266,966</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      box-sizing: border-box;
+    }
+    #toolbar {
+      height: 10%;
+      width: 100%;
+      padding: 5px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      background-color: #f0f0f0;
+      box-sizing: border-box;
+    }
+    #main {
+      display: flex;
+      height: 90%;
+    }
+    #chartContainer {
+      width: 70%;
+      height: 100%;
+      padding: 10px;
+    }
+    #record {
+      width: 100%;
+      height: 100%;
+    }
+    #messages {
+      width: 30%;
+      height: 100%;
+      margin: 0;
+      padding: 10px;
+      list-style: none;
+      overflow-y: auto;
+      border-left: 1px solid #ccc;
+      background-color: #fafafa;
+    }
+    li {
+      padding: 4px 0;
+    }
+  </style>
 </head>
 <body>
-	<h2>INV</h2>
-		<label>Start: <input id="start" type="datetime-local" value="2024-05-30T00:00"></label>
-	<label>End: <input id="end" type="datetime-local" value="2024-06-01T00:00" /></label><br><br>
+  <div id="toolbar">
+    <label>Start: <input id="start" type="datetime-local" value="2025-05-01T00:00"></label>
+    <label>End: <input id="end" type="datetime-local" value="2025-05-05T00:00"></label>
+    <input type="text" id="portfolioInput" style="width: 400px;" value='{"BTC": 0.3, "ETH": 0.3, "XRP": 0.2}'>
+    <button onclick="setPortfolio()">전송</button>
+    <button onclick="plot('/load')">📂 Load</button>
+    <button onclick="plot('/getOhlcv')">📈 Get OHLCV</button>
+    <input type="number" id="intInput" step="1" value="10000000">
+    <button onclick="backtest('/backtest')">📊 Backtest</button>
+    <button onclick="send('/save')">save</button>
+    <button onclick="send('/accounts')">accounts</button>
+    <button onclick="send('/execute')">execute</button>
+    <button onclick="send('/stop')">stop</button>
+  </div>
 
-	<label for="portfolioInput">포트폴리오 JSON 입력:</label><br>
-	<input type="text" id="portfolioInput" style="width: 400px;" value='{"BTC": 0.3, "ETH": 0.3, "XRP": 0.2}'>
-	<button onclick="setPortfolio()">전송</button><br>
-
-	<button onclick="plot('/load')">📂 Load</button>
-	<button onclick="plot('/getOhlcv')">📈 Get OHLCV</button>
-	<input type="number" id = "intInput" step = "1" value = "10000000">
-	<button onclick = "backtest('/backtest')">📊 Backtest</button>
-	<button onclick="send('/save')">save</button>
-	<button onclick="send('/accounts')">accounts</button>
-	<button onclick="send('/execute')">execute</button>
-	<button onclick="send('/stop')">stop</button>
-
-	<canvas id = "record" width = 100% height = 50%></canvas>
-	<ul id="messages"></ul>
-
+  <div id="main">
+    <div id="chartContainer">
+      <canvas id="record"></canvas>
+    </div>
+    <ul id="messages"></ul>
+  </div>
 	<script>
+		function numberFormatter(number){
+			const formatted = Number(number)?.toLocaleString('en-US', {
+				maximumFractionDigits: 2
+			}) ?? '';
+			return formatted;
+		}
 		async function fetchMessages(){
-				const res = await fetch("/messages");
-				const messages = await res.json();
-				const container = document.getElementById("messages");
-				messages.forEach(msg => {
-					const li = document.createElement("li");
-					li.textContent = `${msg.message}`;
-					container.insertBefore(li, container.firstChild);
-				});
+			const res = await fetch("/messages");
+			const messages = await res.json();
+			const container = document.getElementById("messages");
+			messages.forEach(msg => {
+				const li = document.createElement("li");
+				li.textContent = `${msg.message}`;
+				container.insertBefore(li, container.firstChild);
+			});
 		}
 		async function setPortfolio(){
 			const input = document.getElementById("portfolioInput").value;
@@ -113,17 +164,24 @@
 					responsive: true,
 					scales: {
 						x: { type: 'time', time: { tooltipFormat: 'yyyy-MM-dd', unit: "day" }, title: { display: true, text: 'Date' } },
-						y: { title: { display: true, text: '가격' } }
+						y: {
+							title: {
+								display: true,
+								text: '가격' },
+							type: 'logarithmic'
+						}
 					},
-					tooltip: {
-						callbacks:{
-							label: function(context){
-								const point = context.raw;
-								return `${point.price}`;
-							}
-						},
-						mode: 'index',
-						intersect: false
+					plugins: {
+						tooltip: {
+							callbacks:{
+								label: function(context){
+									const point = context.raw;
+									return `${point.price}`;
+								}
+							},
+							mode: 'index',
+							intersect: false
+						}
 					}
 				}
 			});
@@ -163,11 +221,11 @@
 						align: "top",
 						anchor: "end",
 						formatter: function(value, context) {
-							return value.quantity + "@" + value.price;
+							return numberFormatter(value.quantity) + "\n@" + numberFormatter(value.price);
 						},
 						color: function(context){
 							const qty = context.dataset.data[context.dataIndex].quantity;
-            				return qty > 0 ? "red" : qty < 0 ? "blue" : "transparent";
+							return qty > 0 ? "blue" : qty < 0 ? "red" : "transparent";
 						},
 						font: {
 							weight: "bold"
@@ -187,13 +245,15 @@
 				options: {
 					responsive: true,
 					plugins: {
-						tooltips: {
-							callbacks: {
+						tooltip: {
+							callbacks:{
 								label: function(context){
-									const price = context.raw.trade_price;
-									return `${price.toLocaleString()}`;
+									const point = context.raw;
+									return `${numberFormatter(point.price)}`;
 								}
-							}
+							},
+							mode: 'index',
+							intersect: false
 						},
 						legend: {display: true},
 						datalabels: {
@@ -202,7 +262,13 @@
 					},
 					scales: {
 						x: { type: 'time', time: { tooltipFormat: 'yyyy-MM-dd', unit: "day" }, title: { display: true, text: 'Date' } },
-						y: { title: { display: true, text: '가격' } }
+						y: {
+							title: {
+								display: true,
+								text: '가격'
+							},
+							type: 'logarithmic'
+						}
 					}
 				},
 				plugins: [ChartDataLabels] 
@@ -279,10 +345,5 @@
 				}
 			});
 		};
-
-
-	
 	</script>
-</body>
-</html>
-
+</body></html>

@@ -1356,3 +1356,80 @@ Traceback (most recent call last):
     messageStack.append(item + "을 " + price + "에 " + quantity + "개 판매한다.")
                         ~~~~~~~~~~~~~^~~~~~~
 TypeError: can only concatenate str (not "float") to str
+2025-05-27 22:03:38,505 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-16' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:151> exception=UnboundLocalError("cannot access local variable 'res' where it is not associated with a value")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 161, in rebalanceLoop
+    res.raise_for_status()
+    ^^^
+UnboundLocalError: cannot access local variable 'res' where it is not associated with a value
+2025-05-27 22:14:06,634 - root - INFO - 
+2025-05-27 22:14:30,827 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-17' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:151> exception=NameError("name 'urlencode' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 185, in rebalanceLoop
+    buyOrder(item, quantity, price)
+  File "/Users/colaf/Desktop/crawler/main.py", line 349, in buyOrder
+    query_string = urlencode(orderData).encode()
+                   ^^^^^^^^^
+NameError: name 'urlencode' is not defined
+2025-05-27 22:15:18,548 - root - INFO - 
+2025-05-27 22:18:32,291 - root - INFO - backtest
+2025-05-27 22:18:38,670 - root - INFO - 
+2025-05-27 22:18:44,413 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-20' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:152> exception=NameError("name 'hashlib' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 186, in rebalanceLoop
+    buyOrder(item, quantity, price)
+  File "/Users/colaf/Desktop/crawler/main.py", line 351, in buyOrder
+    m = hashlib.sha512()
+        ^^^^^^^
+NameError: name 'hashlib' is not defined
+2025-05-27 22:20:13,649 - root - INFO - 
+2025-05-27 22:21:15,902 - root - INFO - 
+2025-05-27 22:29:33,923 - root - INFO - backtest
+2025-05-27 22:30:08,059 - root - INFO - backtest
+2025-05-27 22:46:48,430 - root - INFO - backtest
+2025-05-27 22:47:25,504 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-53' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:153> exception=NameError("name 'adjustPrice' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 195, in rebalanceLoop
+    buy_price = adjustPrice(valueSum * self.portfolio[item] * self.allowedDeviation[item][1]/volume)
+                ^^^^^^^^^^^
+NameError: name 'adjustPrice' is not defined
+2025-05-27 22:48:58,887 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:153> exception=NameError("name 'openOrder' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 213, in rebalanceLoop
+    for order in openOrder:
+                 ^^^^^^^^^
+NameError: name 'openOrder' is not defined
+2025-05-27 22:51:03,333 - root - INFO - backtest
+2025-05-27 22:51:42,073 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-8' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:153> exception=AttributeError("'str' object has no attribute 'uuid4'")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 214, in rebalanceLoop
+    cancelOrder(order["uuid"])
+  File "/Users/colaf/Desktop/crawler/main.py", line 428, in cancelOrder
+    'nonce': str(uuid.uuid4())
+                 ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'uuid4'
+2025-05-27 22:57:42,612 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-6' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:153> exception=AttributeError("'str' object has no attribute 'uuid4'")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 214, in rebalanceLoop
+    cancelOrder(order["uuid"])
+  File "/Users/colaf/Desktop/crawler/main.py", line 428, in cancelOrder
+    'nonce': str(uuid.uuid4())
+                 ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'uuid4'
+2025-05-27 23:01:34,599 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:153> exception=NameError("name 'headers' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 214, in rebalanceLoop
+    cancelOrder(order["uuid"])
+  File "/Users/colaf/Desktop/crawler/main.py", line 436, in cancelOrder
+    response = requests.delete(url, headers=headers, params=query)
+                                            ^^^^^^^
+NameError: name 'headers' is not defined
+2025-05-27 23:53:23,621 - root - INFO - 

@@ -3,8 +3,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from urllib.parse import urlencode
-import hashlib
+import pymysql
 import datetime
 import asyncio
 
@@ -27,6 +26,9 @@ import jwt
 load_dotenv()
 UPBIT_ACCESS_KEY = os.getenv("UPBIT_ACCESS_KEY")
 UPBIT_SECRET_KEY = os.getenv("UPBIT_SECRET_KEY")
+ip_NAT_mariadb = os.getenv("ip_NAT_mariadb")
+ID_mariadb = os.getenv("ID_mariadb")
+PW_mariadb = os.getenv("PW_mariadb")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -157,13 +159,12 @@ class Invest:
             async with queue_lock:
                 messageStack.append("Rebalancing")
             payload = {'access_key': UPBIT_ACCESS_KEY, 'nonce': str(uuid.uuid4())}
+            jwt_token = jwt.encode(payload, UPBIT_SECRET_KEY, algorithm='HS256')
             url="https://api.upbit.com/v1/ticker"
             params = {"markets": ",".join(f"KRW-{m}" for m in self.portfolio)}
-            res = requests.get(url, params=params)
             res.raise_for_status()
             prices = {item["market"].split("-")[1]: item["trade_price"] for item in res.json()}
             url = "https://api.upbit.com/v1/accounts"
-            jwt_token = jwt.encode(payload, UPBIT_SECRET_KEY, algorithm='HS256')
             headers = {"Authorization": f"Bearer {jwt_token}"}
             res = requests.get(url, headers=headers)
             res.raise_for_status()
@@ -172,9 +173,9 @@ class Invest:
             async with queue_lock:
                 for item in self.portfolio:
                     self.assets[item] = {"volume": volumes.get(item, 0), "price": prices.get(item, 0)}
-                    messageStack.append(item + ": {volume: " + str(self.assets[item]["volume"]) + ", price: " + str(self.assets[item]["price"]) + "}")
+                    messageStack.append(item + ": {volume: " + numberFormat(self.assets[item]["volume"]) + ", price: " + numberFormat(self.assets[item]["price"]) + "}")
                 self.assets["KRW"] = {"volume": volumes.get("KRW", 0), "price": 1}
-                messageStack.append("KRW: {volume: " + str(self.assets["KRW"]["volume"]) + ", price: " + str(self.assets["KRW"]["price"]) + "}")
+                messageStack.append("KRW: {volume: " + f"{self.assets['KRW']['volume']:,.0f}" + ", price: " + f"{self.assets['KRW']['price']:,.0f}" + "}")
                 
                 for item in self.portfolio:
                     price = self.assets[item]["price"]
@@ -183,36 +184,35 @@ class Invest:
                     if price * volume < valueSum * self.portfolio[item] * self.allowedDeviation[item][0]:
                         #buy
                         quantity = round((valueSum * self.portfolio[item] - price * self.assets[item]["volume"])/price, 6)
-                        #messageStack.append(item + "을 " + str(price) + "에 " + str(quantity) + "개 구매를 주문할 예정.")
-                        buyOrder(item, quantity, price)
+                        messageStack.append(item + "을 " + numberFormat(price) + "에 " + numberFormat(quantity) + "개 구매를 주문할 예정.")
+                        # buyOrder(item, quantity, price)
                     elif valueSum * self.portfolio[item] * self.allowedDeviation[item][1] < price * volume:
                         #sell
                         quantity = round((price * volume - valueSum * self.portfolio[item])/price, 6)
-                        #messageStack.append(item + "을 " + str(price) + "에 " + str(quantity) + "개 판매를 주문할 예정.")
-                        sellOrder(item, quantity, price)
+                        messageStack.append(item + "을 " + numberFormat(price) + "에 " + numberFormat(quantity) + "개 판매를 주문할 예정.")
+                        # sellOrder(item, quantity, price)
                     else:
                         #buy
-                        buy_price = adjustPrice(valueSum * self.portfolio[item] * self.allowedDeviation[item][0]/volume)
+                        buy_price = round(valueSum * self.portfolio[item] * self.allowedDeviation[item][1]/volume, 6)
                         buy_quantity = round((1 - self.allowedDeviation[item][0]) * (1 - self.portfolio[item]) * volume / self.allowedDeviation[item][0], 6)
-                        #messageStack.append(item + "을 " + str(buy_price) + "에 " + str(buy_quantity) + "개 구매를 주문할 예정.")
+                        messageStack.append(item + "을 " + numberFormat(buy_price) + "에 " + numberFormat(buy_quantity) + "개 구매를 주문할 예정.")
                         #buyOrder(item, buy_quantity, buy_price)
                         #sell
-                        sell_price = adjustPrice(valueSum * self.portfolio[item]*self.allowedDeviation[item][1]/volume)
+                        sell_price = round(valueSum * self.portfolio[item]*self.allowedDeviation[item][1]/volume, 6)
                         sell_quantity = round((self.allowedDeviation[item][1] - 1)*(1 - self.portfolio[item]) * volume / self.allowedDeviation[item][1], 6)
-                        #messageStack.append(item + "을 " + str(sell_price) + "에 " + str(sell_quantity) + "개 판매를 주문할 예정.")
+                        messageStack.append(item + "을 " + numberFormat(sell_price) + "에 " + numberFormat(sell_quantity) + "개 판매를 주문할 예정.")
                         #sellOrder(item, sell_quantity, sell_price)
 
-            await asyncio.sleep(600)
+            await asyncio.sleep(300)
             openOrders = getOrder()
             if not openOrders:
                 async with queue_lock:
                     messageStack.append("🟢 취소할 미체결 주문이 없습니다.")
             else:
-                for order in openOrders:
-                    res = cancelOrder(order["uuid"])
                 async with queue_lock:
                     messageStack.append(f"🔎 총 {len(openOrders)}개의 주문을 취소합니다.")
-            await asyncio.sleep(10)
+                for order in openOrder:
+                    cancelOrder(order["uuid"])
             async with queue_lock:
                 automation = self.automation
             
@@ -231,7 +231,7 @@ class Invest:
                     self.assets["KRW"]["volume"] -= quantity * price
                     self.record[item].loc[date_dt, "backtest_trade_quantity"] = quantity
                     self.record[item].loc[date_dt, "backtest_quantity"] = self.assets[item]["volume"]
-                    messageStack.append("@" + str(date_dt) + ";" + item + ": [" + str(quantity) + "] [" + str(price) + "]")
+                    messageStack.append("@" + str(date_dt) + ";" + item + ": [" + numberFormat(quantity) + "] [" + numberFormat(price) + "]")
                 elif valueSum*self.portfolio[item] * self.allowedDeviation[item][1] < price * volume:
                     # sell
                     quantity = round((price * volume - valueSum * self.portfolio[item])/price, 6)
@@ -239,7 +239,7 @@ class Invest:
                     self.assets["KRW"]["volume"] += quantity * price
                     self.record[item].loc[date_dt, "backtest_trade_quantity"] = -quantity
                     self.record[item].loc[date_dt, "backtest_quantity"] = self.assets[item]["volume"]
-                    messageStack.append("@" + str(date_dt) + ";" + item + ": [" + str(-quantity) + "] [" + str(price) + "]")
+                    messageStack.append("@" + str(date_dt) + ";" + item + ": [" + numberFormat(-quantity) + "] [" + numberFormat(price) + "]")
                 else:
                     self.record[item].loc[date_dt, "backtest_trade_quantity"] = 0
                     self.record[item].loc[date_dt, "backtest_quantity"] = self.assets[item]["volume"]
@@ -254,11 +254,11 @@ class Invest:
                     price = self.assets[item]["price"]
                     value = quantity * price
                     ratio = price / self.valueSum()
-                    logger.info(item  + ": " + str(quantity) + "\t" + str(price) + "\t" + str(value) + "\t" + str(ratio))
-                    messageStack.append(item + ": " + str(quantity) + "\t" + str(price) + "\t" + str(value) + "\t" + str(ratio))
+                    logger.info(item  + ": " + numberFormat(quantity) + "\t" + numberFormat(price) + "\t" + numberFormat(value) + "\t" + numberFormat(ratio))
+                    messageStack.append(item + ": " + numberFormat(quantity) + "\t" + numberFormat(price) + "\t" + numberFormat(value) + "\t" + numberFormat(ratio))
                 else:
                     logger.info(item + ": " + str(self.assets[item]["volume"]))
-                    messageStack.append(item + ": " + str(self.assets[item]["volume"]))
+                    messageStack.append(item + ": " + numberFormat(self.assets[item]["volume"]))
             print("Total: " + str(self.valueSum()))
 
     async def backtest(self, start_dt, end_dt):
@@ -326,21 +326,25 @@ class Invest:
                         if response.status_code == 200:
                             price = response.json()[0]["trade_price"]
                             self.assets[item['currency']] = item['balance']
-                            messageStack.append(item['currency'] + ": {quantity: " + str(item['balance']) + ", price: " + str(price) + "}")
+                            messageStack.append(item['currency'] + ": {quantity: " + numberFormat(item['balance']) + ", price: " + numberFormat(price) + "}")
                         elif response.status_code == 404:
-                            messageStack.append(item['currency'] + ": {quantity: " + str(item['balance']) + ", price: 0}")
+                            messageStack.append(item['currency'] + ": {quantity: " + numberFormat(item['balance']) + ", price: 0}")
                         else:
                             raise Exception(f"Upbit 시세 조회 실패: {response.text}")
                 logger.info(text)
             else:
                 print(f"에러 발생: {res.status_code}")
                 print(res.text)
+
+def numberFormat(num):
+    return f"{num:,.6f}".rstrip('0').rstrip('.')
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # CORS 허용
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 def buyOrder(item, quantity, price):
+    messageStack.append(item + "을 " + numberFormat(price) + "에 " + numberFormat(quantity) + "개 구매를 주문한다.")
     orderData = {
             'market': f"KRW-{item}",
             'side': 'bid',
@@ -368,7 +372,7 @@ def buyOrder(item, quantity, price):
             }
     response = requests.post(url, json=orderData, headers=headers)
     if response.status_code == 201:
-        messageStack.append(item + "을 " + str(price) + "에 " + str(quantity) + "개 구매를 주문한다.")
+        messageStack.append(item + "을 " + numberFormat(price) + "에 " + numberFormat(quantity) + "개 구매를 주문한다.")
     else:
         messageStack.append(f"❌ 오류 발생: {response.status_code} - {response.text}")
 
@@ -400,9 +404,10 @@ def sellOrder(item, quantity, price):
             }
     response = requests.post(url, json=orderData, headers=headers)
     if response.status_code == 201:
-        messageStack.append(item + "을 " + str(price) + "에 " + str(quantity) + "개 판매를 주문한다.")
+        messageStack.append(item + "을 " + numberFormat(price) + "에 " + numberFormat(quantity) + "개 판매를 주문한다.")
     else:
         messageStack.append(f"❌ 오류 발생: {response.status_code} - {response.text}")
+    messageStack.append(item + "을 " + str(price) + "에 " + numberFormat(quantity) + "개 판매한다.")
 
 def getOrder():
     payload = {
@@ -421,55 +426,53 @@ def getOrder():
     openOrders = response.json()
     return openOrders
 
-def cancelOrder(uuid_str):
+def cancelOrder(uuid):
     url = "https://api.upbit.com/v1/order"
-    query = {"uuid": uuid_str}
-    query_string = urlencode(query).encode()
-    m = hashlib.sha512()
-    m.update(query_string)
-    query_hash = m.hexdigest()
+    query = {"uuid": uuid}
     payload = {
             'access_key': UPBIT_ACCESS_KEY,
-            'nonce': str(uuid.uuid4()),
-            'query_hash': query_hash,
-            'query_hash_alg': 'SHA512'
+            'nonce': str(uuid.uuid4())
             }
     jwt_token = jwt.encode(payload, UPBIT_SECRET_KEY, algorithm='HS256')
     if isinstance(jwt_token, bytes):
         jwt_token = jwt_token.decode("utf-8")
-    headers = {
+    header = {
             "Authorization": f"Bearer {jwt_token}",
             }
     response = requests.delete(url, headers=headers, params=query)
     return response
 
-def adjustPrice(price: float) -> float:
-    if price >= 2000000:
-        unit = 1000
-    elif price >= 1000000:
-        unit = 500
-    elif price >= 100000:
-        unit = 100
-    elif price >= 10000:
-        unit = 50
-    elif price >= 1000:
-        unit = 10
-    elif price >= 100:
-        unit = 5
-    elif price >= 10:
-        unit = 1
-    elif price >= 1:
-        unit = 0.1
-    elif price >= 0.1:
-        unit = 0.01
-    else:
-        unit = 0.001
-
-    # 호가 단위로 반올림
-    return round(price / unit) * unit
-
 invest = Invest(10000000)
 clients = set()
+
+def isAuthenticated(request: Request):
+    db_config = {
+            'host': ip_NAT_mariadb,
+            'user': ID_mariadb,
+            'password': PW_mariadb,
+            'db': 'auth_session',
+            'charset': 'utf8mb4',
+            'cursorclass': pymysql.cursors.DictCursor
+            }
+    # session_id = request.cookies
+    session_id = ""
+    print(session_id)
+    dbResult = []
+    try:
+        conn = pymysql.connect(**db_config)
+        with conn.cursor() as cursor:
+            sql = "SELECT data FROM sessions WHERE session_id = %s;"
+            cursor.execute(sql, (session_id,))
+            dbResult = cursor.fetchone()
+    except pymysql.MySQLError as e:
+        userId = 'local user'
+    finally:
+        if 'connection' in locals() and conn.open:
+            conn.close()
+    data = json.loads(dbResult['data'])
+    userId = data["passport"]["user"]
+    return userId
+
 
 class DateRange(BaseModel):
     start: str
@@ -486,7 +489,11 @@ async def get():
     return HTMLResponse(open("static/index.html", encoding="utf-8").read())
 
 @app.get("/messages")
-async def get_messages():
+async def get_messages(request: Request):
+    userId = isAuthenticated(request)
+    if userId =="":
+        print("userIde no ")
+        return
     async with queue_lock:
         data = []
         while messageStack:
@@ -495,6 +502,9 @@ async def get_messages():
 
 @app.post("/load")
 async def load():
+    userId = isAuthenticated(request)
+    if userId =="":
+        return
     async with queue_lock:
         messageStack.append("loading")
         data = await invest.load("./price.xlsx")
@@ -507,6 +517,9 @@ async def load():
     return JSONResponse(content = json)
 @app.post("/save")
 async def save():
+    userId = isAuthenticated(request)
+    if userId =="":
+        return
     async with queue_lock:
         messageStack.append("saving")
         invest.save("./price.xlsx")
@@ -514,6 +527,9 @@ async def save():
 
 @app.post("/getOhlcv")
 async def getOhlcv(request: DateRange):
+    userId = isAuthenticated(request)
+    if userId =="":
+        return
     start_dt = datetime.datetime.strptime(request.start, "%Y-%m-%dT%H:%M")
     end_dt = datetime.datetime.strptime(request.end, "%Y-%m-%dT%H:%M")
     async with queue_lock:
@@ -534,6 +550,9 @@ async def getOhlcv(request: DateRange):
 
 @app.post("/backtest")
 async def backtest(request: backtestData):
+    userId = isAuthenticated(request)
+    if userId =="":
+        return
     krw = request.krw
     start_dt = datetime.datetime.strptime(request.start, "%Y-%m-%dT%H:%M")
     end_dt = datetime.datetime.strptime(request.end, "%Y-%m-%dT%H:%M")
@@ -564,15 +583,24 @@ async def backtest(request: backtestData):
 
 @app.post("/accounts")
 async def accounts():
+    userId = isAuthenticated(request)
+    if userId =="":
+        return
     async with queue_lock:
         messageStack.append("Accounts")
     await invest.accounts() 
 @app.post("/setPortfolio")
 async def setPortfolio(request: portfolioData):
+    userId = isAuthenticated(request)
+    if userId =="":
+        return
     portfolio = request.portfolio
     await invest.setPortfolio(portfolio)
 @app.post("/execute")
 async def execute():
+    userId = isAuthenticated(request)
+    if userId =="":
+        return
     async with queue_lock:
         if not invest.automation:
             invest.automation = True
@@ -582,6 +610,9 @@ async def execute():
             messageStack.append("Already rebalancing")
 @app.post("/stop")
 async def stop():
+    userId = isAuthenticated(request)
+    if userId =="":
+        return
     async with queue_lock:
         invest.automation = False
         if invest.rebalanceTask:
@@ -591,4 +622,3 @@ async def stop():
             except asyncio.CancelledError:
                 messageStack.append("[INFO] 리밸런싱 루프 중지됨")
         messageStack.append("자동 리밸런싱 중지됨")
-
