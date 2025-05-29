@@ -14,7 +14,6 @@ from collections import namedtuple
 import copy
 import pandas as pd
 import matplotlib.pyplot as plt
-import datetime
 import time
 import os
 import sys
@@ -155,7 +154,7 @@ class Invest:
             automation = self.automation
         while automation:
             async with queue_lock:
-                messageStack.append("Rebalancing")
+                messageStack.append("Rebalancing" + str(datetime.datetime.now()))
             payload = {'access_key': UPBIT_ACCESS_KEY, 'nonce': str(uuid.uuid4())}
             url="https://api.upbit.com/v1/ticker"
             params = {"markets": ",".join(f"KRW-{m}" for m in self.portfolio)}

@@ -1433,3 +1433,10 @@ Traceback (most recent call last):
                                             ^^^^^^^
 NameError: name 'headers' is not defined
 2025-05-27 23:53:23,621 - root - INFO - 
+2025-05-28 22:20:38,294 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-8' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/main.py:152> exception=TypeError('can only concatenate str (not "datetime.datetime") to str')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/main.py", line 157, in rebalanceLoop
+    messageStack.append("Rebalancing" + datetime.datetime.now())
+                        ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~
+TypeError: can only concatenate str (not "datetime.datetime") to str

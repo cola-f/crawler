@@ -6,6 +6,8 @@ from pydantic import BaseModel
 import pymysql
 import datetime
 import asyncio
+import urllib
+import re
 
 import requests
 import json
@@ -342,7 +344,7 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # CORS 허용
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["https://colaf.net", "https://colaf.net:9900"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 def buyOrder(item, quantity, price):
     messageStack.append(item + "을 " + numberFormat(price) + "에 " + numberFormat(quantity) + "개 구매를 주문한다.")
     orderData = {
@@ -454,23 +456,28 @@ def isAuthenticated(request: Request):
             'charset': 'utf8mb4',
             'cursorclass': pymysql.cursors.DictCursor
             }
-    # session_id = request.cookies
-    session_id = ""
-    print(session_id)
+    sid_encoded = request.cookies.get("connect.sid", "")
+    sid_decoded = urllib.parse.unquote(sid_encoded)
+    match = re.match(r"s:(\w+)\.",sid_decoded)
+    if match:
+        match = match.group(1)
+    else:
+        match = ""
+
     dbResult = []
     try:
         conn = pymysql.connect(**db_config)
         with conn.cursor() as cursor:
             sql = "SELECT data FROM sessions WHERE session_id = %s;"
-            cursor.execute(sql, (session_id,))
+            cursor.execute(sql, (match,))
             dbResult = cursor.fetchone()
+            data = json.loads(dbResult['data'])
+            userId = data["passport"]["user"]
     except pymysql.MySQLError as e:
         userId = 'local user'
     finally:
         if 'connection' in locals() and conn.open:
             conn.close()
-    data = json.loads(dbResult['data'])
-    userId = data["passport"]["user"]
     return userId
 
 
@@ -526,18 +533,23 @@ async def save():
         messageStack.append("done")
 
 @app.post("/getOhlcv")
-async def getOhlcv(request: DateRange):
+async def getOhlcv(request: Request, body: DateRange):
     userId = isAuthenticated(request)
+    print(userId)
     if userId =="":
         return
-    start_dt = datetime.datetime.strptime(request.start, "%Y-%m-%dT%H:%M")
-    end_dt = datetime.datetime.strptime(request.end, "%Y-%m-%dT%H:%M")
+    print("here")
+    start_dt = datetime.datetime.strptime(body.start, "%Y-%m-%dT%H:%M")
+    print(start_dt)
+    end_dt = datetime.datetime.strptime(body.end, "%Y-%m-%dT%H:%M")
+    print(end_dt)
     async with queue_lock:
         messageStack.append("📈 OHLCV 수집 시작")
+    print("1")
     await invest.getOhlcv(start_dt, end_dt)
+    print("2")
     async with queue_lock:
         messageStack.append("✅ OHLCV 수집 완료")
-
         json = {}
         for item, df in invest.record.items():
             df_output = df[(start_dt <= df.index) & (df.index <= end_dt)].copy()
@@ -546,16 +558,17 @@ async def getOhlcv(request: DateRange):
             df_clean["candle_date_time_kst"] = df_clean["candle_date_time_kst"].dt.strftime('%Y-%m-%dT%H:%M:%S')
             df_clean = df_clean[["candle_date_time_kst", "normalized_value", "trade_price"]]
             json[item] = df_clean.to_dict(orient="records")
+    print("json: " + str(json))
     return JSONResponse(content = json)
 
 @app.post("/backtest")
-async def backtest(request: backtestData):
+async def backtest(request: Request, body: backtestData):
     userId = isAuthenticated(request)
     if userId =="":
         return
-    krw = request.krw
-    start_dt = datetime.datetime.strptime(request.start, "%Y-%m-%dT%H:%M")
-    end_dt = datetime.datetime.strptime(request.end, "%Y-%m-%dT%H:%M")
+    krw = body.krw
+    start_dt = datetime.datetime.strptime(body.start, "%Y-%m-%dT%H:%M")
+    end_dt = datetime.datetime.strptime(body.end, "%Y-%m-%dT%H:%M")
     async with queue_lock:
         messageStack.append("📊 백테스트 시작")
         messageStack.append("초기값 " + f"{krw:,.0f}" + "원")
@@ -582,7 +595,7 @@ async def backtest(request: backtestData):
     return JSONResponse(content = json)
 
 @app.post("/accounts")
-async def accounts():
+async def accounts(request: Request):
     userId = isAuthenticated(request)
     if userId =="":
         return
@@ -590,14 +603,14 @@ async def accounts():
         messageStack.append("Accounts")
     await invest.accounts() 
 @app.post("/setPortfolio")
-async def setPortfolio(request: portfolioData):
+async def setPortfolio(request: Request, body: portfolioData):
     userId = isAuthenticated(request)
     if userId =="":
         return
-    portfolio = request.portfolio
+    portfolio = body.portfolio
     await invest.setPortfolio(portfolio)
 @app.post("/execute")
-async def execute():
+async def execute(request: Request):
     userId = isAuthenticated(request)
     if userId =="":
         return
@@ -609,7 +622,7 @@ async def execute():
         else:
             messageStack.append("Already rebalancing")
 @app.post("/stop")
-async def stop():
+async def stop(request: Request):
     userId = isAuthenticated(request)
     if userId =="":
         return
