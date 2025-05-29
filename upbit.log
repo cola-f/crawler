@@ -1440,3 +1440,75 @@ Traceback (most recent call last):
     messageStack.append("Rebalancing" + datetime.datetime.now())
                         ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~
 TypeError: can only concatenate str (not "datetime.datetime") to str
+2025-05-29 20:50:32,223 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-11' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/crawler.py:157> exception=UnboundLocalError("cannot access local variable 'res' where it is not associated with a value")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 167, in rebalanceLoop
+    res.raise_for_status()
+    ^^^
+UnboundLocalError: cannot access local variable 'res' where it is not associated with a value
+2025-05-29 20:56:45,371 - root - INFO - 
+2025-05-29 22:01:10,346 - root - INFO - 
+2025-05-29 22:02:31,313 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-9' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/crawler.py:157> exception=TypeError('can only concatenate str (not "datetime.datetime") to str')>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 162, in rebalanceLoop
+    messageStack.append("Rebalancing" + datetime.datetime.now())
+                        ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~
+TypeError: can only concatenate str (not "datetime.datetime") to str
+2025-05-29 22:11:05,418 - root - INFO - 
+2025-05-29 22:11:10,195 - root - INFO - backtest
+2025-05-29 22:31:59,623 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-9' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/crawler.py:157> exception=NameError("name 'urlencode' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 211, in rebalanceLoop
+    buyOrder(item, buy_quantity, buy_price)
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 382, in buyOrder
+    query_string = urlencode(orderData).encode()
+                   ^^^^^^^^^
+NameError: name 'urlencode' is not defined
+2025-05-29 22:34:12,452 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-9' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/crawler.py:158> exception=NameError("name 'hashlib' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 212, in rebalanceLoop
+    buyOrder(item, buy_quantity, buy_price)
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 384, in buyOrder
+    m = hashlib.sha512()
+        ^^^^^^^
+NameError: name 'hashlib' is not defined
+2025-05-29 22:36:22,318 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/crawler.py:159> exception=NameError("name 'openOrder' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 172, in rebalanceLoop
+    for order in openOrder:
+                 ^^^^^^^^^
+NameError: name 'openOrder' is not defined
+2025-05-29 22:36:51,803 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/crawler.py:159> exception=AttributeError("'str' object has no attribute 'uuid4'")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 173, in rebalanceLoop
+    cancelOrder(order["uuid"])
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 462, in cancelOrder
+    'nonce': str(uuid.uuid4())
+                 ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'uuid4'
+2025-05-29 22:38:28,834 - root - INFO - 
+2025-05-29 22:39:18,088 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/crawler.py:159> exception=NameError("name 'headers' is not defined")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 173, in rebalanceLoop
+    cancelOrder(order["uuid"])
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 469, in cancelOrder
+    response = requests.delete(url, headers=headers, params=query)
+                                            ^^^^^^^
+NameError: name 'headers' is not defined
+2025-05-29 22:52:54,058 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-17' coro=<Invest.rebalanceLoop() done, defined at /Users/colaf/Desktop/crawler/crawler.py:159> exception=AttributeError("'dict' object has no attribute 'item'")>
+Traceback (most recent call last):
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 171, in rebalanceLoop
+    result = cancelOrder(order["uuid"])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/colaf/Desktop/crawler/crawler.py", line 459, in cancelOrder
+    query_string = '&'.join([f'{key}={value}' for key, value in params.item()])
+                                                                ^^^^^^^^^^^
+AttributeError: 'dict' object has no attribute 'item'
