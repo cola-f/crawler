@@ -125,6 +125,7 @@
 		setInterval(fetchMessages, 3000);
 		fetchMessages();
 		let chart;
+		let test;
 		async function plot(path) {
 			const start = document.getElementById("start").value;
 			const end = document.getElementById("end").value;
@@ -137,19 +138,50 @@
 			const data = await res.json();
 			let datasets = []
 			for(let item in data){
+				const baseColor = "#" + Math.floor(Math.random() * 16777215).toString(16);
 				const priceData = data[item].map(d => ({
-					x: d.candle_date_time_kst,
-					y: d.normalized_value,
+					x: d.x,
+					y: d.norm_y,
 					price: d.trade_price,
 				}));
 				datasets.push({
 					label: item,
 					data: priceData,
-					borderColor: "#" + Math.floor(Math.random() * 16777215).toString(16),
+					borderColor: baseColor,
 					borderWidth: 2,
 					pointRadius: 0,
 					fill: false
-			  }); 
+			  });
+				if(data[item][0].hasOwnProperty('norm_lower')){
+					const priceData = data[item].map(d => ({
+						x: d.x,
+						y: d.norm_lower,
+					}));
+					datasets.push({
+						label: item + 'lower',
+						data: priceData,
+						borderColor: baseColor,
+						borderDash: [5, 5],
+						borderWidth: 1,
+						pointRadius: 0,
+						fill: false
+					});
+				}
+				if(data[item][0].hasOwnProperty('norm_upper')){
+					const priceData = data[item].map(d => ({
+						x: d.x,
+						y: d.norm_upper,
+					}));
+					datasets.push({
+						label: item + 'upper',
+						data: priceData,
+						borderColor: baseColor,
+						borderDash: [5, 5],
+						borderWidth: 1,
+						pointRadius: 0,
+						fill: false
+					});
+				}
 			}
 			const ctx = document.getElementById("record").getContext("2d");
 			if(chart){
@@ -176,6 +208,7 @@
 							callbacks:{
 								label: function(context){
 									const point = context.raw;
+									if(point?.price === undefined) return "";
 									return `${point.price}`;
 								}
 							},
@@ -204,16 +237,17 @@
 			console.log(data);
 			let datasets = []
 			for(let item in data){
+				const baseColor = "#" + Math.floor(Math.random() * 16777215).toString(16);
 				const priceData = data[item].map(d => ({
-					x: d.candle_date_time_kst,
-					y: d.normalized_value,
+					x: d.x,
+					y: d.norm_y,
 					price: d.trade_price,
 					quantity: d.backtest_trade_quantity
 				}));
 				datasets.push({
 					label: item,
 					data: priceData,
-					borderColor: "#" + Math.floor(Math.random() * 16777215).toString(16),
+					borderColor: baseColor,
 					borderWidth: 2,
 					pointRadius: 0,
 					fill: false,
