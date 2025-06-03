@@ -49,6 +49,12 @@
       border-left: 1px solid #ccc;
       background-color: #fafafa;
     }
+		input#keyInput{
+			width: 50px;
+		}
+		input#intInput{
+			width: 70px
+		}
     li {
       padding: 4px 0;
     }
@@ -56,18 +62,25 @@
 </head>
 <body>
   <div id="toolbar">
-    <label>Start: <input id="start" type="datetime-local" value="2025-05-01T00:00"></label>
-    <label>End: <input id="end" type="datetime-local" value="2025-05-05T00:00"></label>
-    <input type="text" id="portfolioInput" style="width: 400px;" value='{"BTC": 0.3, "ETH": 0.3, "XRP": 0.2}'>
-    <button onclick="setPortfolio()">전송</button>
-    <button onclick="plot('/load')">📂 Load</button>
-    <button onclick="plot('/getOhlcv')">📈 Get OHLCV</button>
-    <input type="number" id="intInput" step="1" value="10000000">
-    <button onclick="backtest('/backtest')">📊 Backtest</button>
-    <button onclick="send('/save')">save</button>
-    <button onclick="send('/accounts')">accounts</button>
-    <button onclick="send('/execute')">execute</button>
-    <button onclick="send('/stop')">stop</button>
+		<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; width: 100%;">
+			<label>Start: <input id="start" type="datetime-local" value="2025-05-01T00:00"></label>
+			<label>End: <input id="end" type="datetime-local" value="2025-05-05T00:00"></label>
+			<input type="text" id="keyInput" value="KRW">
+			<input type="number" id="intInput" step="1" value="10000000">
+			<input type="text" id="portfolioInput" value='{"BTC": 0.3, "ETH": 0.3, "XRP": 0.2}'>
+			<input type="text" id="allowedDeviationInput" value = '{"BTC": [0.98, 1.02], "ETH": [0.98, 1.02], "XRP": [0.98, 1.02]}'>
+			<button onclick="setCondition()">🔧Set</button>
+			<button onclick="plot('/load')">📂 Load</button>
+			<button onclick="send('/save')">💾save</button>
+		</div>
+		<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; width: 100%; margin-top: 5px;">
+			<button onclick="plot('/getOhlcv')">📈 Get OHLCV</button>
+			<button onclick="backtest('/backtest')">📊 Backtest</button>
+			<button onclick="backtest('/backtest-bolinger')">📊 Backtest-bolinger</button>
+			<button onclick="send('/accounts')">💰accounts</button>
+			<button onclick="send('/execute')">🚀execute</button>
+			<button onclick="send('/stop')">🛑stop</button>
+		</div>
   </div>
 
   <div id="main">
@@ -93,23 +106,36 @@
 				container.insertBefore(li, container.firstChild);
 			});
 		}
-		async function setPortfolio(){
-			const input = document.getElementById("portfolioInput").value;
-			let portfolio;
+		async function setCondition(){
+			const key = document.getElementById("keyInput").value;
+			let portfolio = document.getElementById("portfolioInput").value;
+			let allowedDeviation = document.getElementById("allowedDeviationInput").value;
+			const initial = document.getElementById("intInput").value;
 			try{
-				portfolio = JSON.parse(input);
+				portfolio = JSON.parse(portfolio);
+				allowedDeviation = JSON.parse(allowedDeviation);
 			}
 			catch(e){
 				alert("유효한JSON형식이 아닙니다.");
 				return;
 			}
-			const res = await fetch("/setPortfolio", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify({portfolio})
-			});
+			try{
+				const res = await fetch("/setCondition", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json"
+					},
+					body: JSON.stringify({
+						key: key,
+						portfolio: portfolio,
+						allowedDeviation: allowedDeviation,
+						initial: initial
+					})
+				});
+			}
+			catch(error){
+				alert("error: error.message");
+			}
 		}
 		async function send(path) {
 			const start = document.getElementById("start").value;
@@ -136,13 +162,14 @@
 			body
 			});
 			const data = await res.json();
+			console.log(data);
 			let datasets = []
 			for(let item in data){
 				const baseColor = "#" + Math.floor(Math.random() * 16777215).toString(16);
 				const priceData = data[item].map(d => ({
 					x: d.x,
 					y: d.norm_y,
-					price: d.trade_price,
+					y_value: d.y,
 				}));
 				datasets.push({
 					label: item,
@@ -208,8 +235,8 @@
 							callbacks:{
 								label: function(context){
 									const point = context.raw;
-									if(point?.price === undefined) return "";
-									return `${point.price}`;
+									if(point?.y_value === undefined) return "";
+									return `${point.y_value}`;
 								}
 							},
 							mode: 'index',
@@ -220,14 +247,14 @@
 			});
 		};
 		async function backtest(path) {
-			const krw = parseInt(document.getElementById("intInput").value);
-			if(isNaN(krw)){
+			const initial = parseInt(document.getElementById("intInput").value);
+			if(isNaN(initial)){
 				alert("정수를 입력하세요.");
 				return;
 			}
 			const start = document.getElementById("start").value;
 			const end = document.getElementById("end").value;
-			const body = JSON.stringify({ start: start, end: end, krw: krw});
+			const body = JSON.stringify({ start: start, end: end, initial: initial});
 			const res = await fetch(path, {
 			method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -241,8 +268,8 @@
 				const priceData = data[item].map(d => ({
 					x: d.x,
 					y: d.norm_y,
-					price: d.trade_price,
-					quantity: d.backtest_trade_quantity
+					y_value: d.y,
+					quantity: d.trade_quantity
 				}));
 				datasets.push({
 					label: item,
@@ -255,7 +282,7 @@
 						align: "top",
 						anchor: "end",
 						formatter: function(value, context) {
-							return numberFormatter(value.quantity) + "\n@" + numberFormatter(value.price);
+							return numberFormatter(value.quantity) + "\n@" + numberFormatter(value.y_value);
 						},
 						color: function(context){
 							const qty = context.dataset.data[context.dataIndex].quantity;
@@ -283,7 +310,7 @@
 							callbacks:{
 								label: function(context){
 									const point = context.raw;
-									return `${numberFormatter(point.price)}`;
+									return `${numberFormatter(point.y_value)}`;
 								}
 							},
 							mode: 'index',
@@ -334,8 +361,8 @@
 			for(item in data){
 				labels = data[item].map(d => d.candle_date_time_kst);
 				const labelData = data[item].map(d => ({
-					x: d.candle_date_time_kst,
-					y: d.normalized_value,
+					x: d.x,
+					norm_y: d.norm_y,
 					quantity: d.trade_quantity
 				}));
 				datasets.push({
@@ -373,7 +400,7 @@
 					responsive: true,
 					scales: {
 						x: { type: 'time', time: { tooltipFormat: 'yyyy-MM-dd', unit: "day" }, title: { display: true, text: 'Date' } },
-						y: { title: { display: true, text: '가격' } }
+						norm_y: { title: { display: true, text: '가격' } }
 					},
 				  plugins: [ChartDataLabels] 
 				}
