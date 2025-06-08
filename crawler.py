@@ -13,6 +13,7 @@ import re
 
 import requests
 import json
+import yaml
 from collections import namedtuple
 import copy
 import numpy as np
@@ -30,6 +31,8 @@ import jwt
 load_dotenv()
 UPBIT_ACCESS_KEY = os.getenv("UPBIT_ACCESS_KEY")
 UPBIT_SECRET_KEY = os.getenv("UPBIT_SECRET_KEY")
+KIS_APP_KEY = os.getenv("KIS_APP_KEY")
+KIS_APP_SECRET = os.getenv("KIS_APP_SECRET")
 ip_NAT_mariadb = os.getenv("ip_NAT_mariadb")
 ID_mariadb = os.getenv("ID_mariadb")
 PW_mariadb = os.getenv("PW_mariadb")
@@ -165,25 +168,15 @@ class Invest:
         for item in self.portfolio:
             sum += float(self.assets[item]["quantity"]) * self.assets[item]["price"] 
         return sum
-
-    async def getOhlcv(self, start_dt, end_dt):
-        key = ""
-        portfolio = {}
-        record = {}
-        async with self.queueLock:
-            self.messageStack.append("📈 OHLCV 수집 시작")
-            key = self.key
-            portfolio = self.portfolio
-            record = self.record
+    async def getUpbitOhlcv(self, start_dt, end_dt, item):
         # 60분단위로 필터링하는 코드가 필요
         dates = pd.date_range(start_dt, end_dt, freq = "60min")[::-1]
-        for item in portfolio:
-            for date in dates:
-                if date not in record[f"{key}-{item}"].index:
-                    await self.queueLock.acquire()
+        for date in dates:
+            async with self.queueLock:
+                if date not in self.record[f"{self.key}-{item}"].index:
                     print("item: " + item + " date: " + str(date) + " 값을 가져옵니다.")
                     self.messageStack.append("item: " + item + " date: " + str(date) + "값을 가져옵니다.")
-                    market = f"{key}-{item}"
+                    market = f"{self.key}-{item}"
                     url = "https://api.upbit.com/v1/candles/minutes/60"
                     headers = {"Accept": "application/json"}
                     params = {
@@ -209,13 +202,60 @@ class Invest:
                     df.set_index('datetime', inplace = True)
                     df = df[["price", "trade_volume"]]
                     if df.index.max() != date:
-                        self.record[f"{key}-{item}"].loc[date] = df.loc[df.index.max()]
-                        self.record[f"{key}-{item}"] = self.record[f"{key}-{item}"].sort_index()
+                        self.record[f"{self.key}-{item}"].loc[date] = df.loc[df.index.max()]
+                        self.record[f"{self.key}-{item}"] = self.record[f"{self.key}-{item}"].sort_index()
                     else:
-                        self.record[f"{key}-{item}"] = pd.concat([self.record[f"{key}-{item}"], df]).sort_index()
-                        self.record[f"{key}-{item}"] = self.record[f"{key}-{item}"][~self.record[f"{key}-{item}"].index.duplicated(keep='last')].sort_index() 
-                    self.queueLock.release()
+                        self.record[f"{self.key}-{item}"] = pd.concat([self.record[f"{self.key}-{item}"], df]).sort_index()
+                        self.record[f"{self.key}-{item}"] = self.record[f"{self.key}-{item}"][~self.record[f"{self.key}-{item}"].index.duplicated(keep='last')].sort_index() 
                     await asyncio.sleep(0.1)
+    async def getKisOhlcv(self, start_dt, end_dt, item):
+        dates = pd.date_range(start_dt, end_dt, freq = "D")[::-1]
+        for date in dates:
+            async with self.queueLock:
+                if date not in self.record[f"{item}"].index:
+
+                    url = "https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
+                    token = getAccessToken()
+                    headers = {
+                        "authorization": f"Bearer {token}",
+                        "appKey": KIS_APP_KEY,
+                        "appSecret": KIS_APP_SECRET,
+                        "tr_id": "FHKST03010100"
+                    }
+                    params = {
+                        "FID_COND_MRKT_DIV_CODE": "J",  # 주식시장 코드
+                        "FID_INPUT_ISCD": item,
+                        "FID_INPUT_DATE_1": start_dt.strftime("%Y%m%d"),
+                        "FID_INPUT_DATE_2": end_dt.strftime("%Y%m%d"),
+                        "FID_PERIOD_DIV_CODE": "D",  # 1: 시간, 2: 일
+                        "FID_ORG_ADJ_PRC": "0"
+                    }
+                    res = requests.get(url, headers=headers, params=params)
+                    df = pd.DataFrame(res.json()["output2"])[["stck_bsop_date", "stck_clpr"]].copy()
+                    df = df.rename(columns = {"stck_bsop_date": "datetime", "stck_clpr": "price"})
+                    df["datetime"] = pd.to_datetime(df["datetime"])
+                    df.set_index("datetime", inplace = True)
+                    await asyncio.sleep(0.1)
+
+
+    async def getOhlcv(self, start_dt, end_dt):
+        key = ""
+        portfolio = {}
+        record = {}
+        async with self.queueLock:
+            self.messageStack.append("📈 OHLCV 수집 시작")
+            key = self.key
+            portfolio = self.portfolio
+            record = self.record
+        for item in portfolio:
+            if str(item).isdigit() and len(str(item)) == 6:
+                await self.getKisOhlcv(start_dt, end_dt, item)
+            elif item.isalpha() and item.isupper():
+                print("getUpbitOhlcv 전")
+                await self.getUpbitOhlcv(start_dt, end_dt, item)
+                print("getUpbitOhlcv 후")
+
+        dates = pd.date_range(start_dt, end_dt, freq = "60min")[::-1]
         async with self.queueLock:
             for date in dates:
                 self.record[key].loc[date, "price"] = 1
@@ -313,7 +353,7 @@ class Invest:
                     self.assets[self.key]["quantity"] -= trade_quantity * price
                     self.record[f"{self.key}-{item}"].loc[date_dt, "trade_quantity"] = trade_quantity
                     self.record[f"{self.key}-{item}"].loc[date_dt, "quantity"] = self.assets[item]["quantity"]
-                    self.record[self.key].loc[date_dt, "trade_quantity"] = - trade_quantity * price
+                    self.record[self.key].loc[date_dt, "trade_quantity"] =  trade_quantity * price
                     self.record[self.key].loc[date_dt, "quantity"] = self.assets[self.key]["quantity"]
                     self.messageStack.append("@" + str(date_dt) + ";" + item + ": [" + numberFormat(quantity) + "] [" + numberFormat(price) + "]")
                 elif valueSum*self.portfolio[item] * self.allowedDeviation[item][1] < price * quantity:
@@ -323,7 +363,7 @@ class Invest:
                     self.assets[self.key]["quantity"] += trade_quantity * price
                     self.record[f"{self.key}-{item}"].loc[date_dt, "trade_quantity"] = -trade_quantity
                     self.record[f"{self.key}-{item}"].loc[date_dt, "quantity"] = self.assets[item]["quantity"]
-                    self.record[self.key].loc[date_dt, "trade_quantity"] = trade_quantity * price
+                    self.record[self.key].loc[date_dt, "trade_quantity"] = -trade_quantity * price
                     self.record[self.key].loc[date_dt, "quantity"] = self.assets[self.key]["quantity"]
                     self.messageStack.append("@" + str(date_dt) + ";" + item + ": [" + numberFormat(-quantity) + "] [" + numberFormat(price) + "]")
                 else:
@@ -682,7 +722,44 @@ def cancelOrder(uuid_str):
     else:
         return response.text
 
-clients = set()
+def getAccessToken():
+    if os.path.exists("kisToken.yml"):
+        with open("kisToken.yml", "r", encoding="utf-8") as f:
+            token = ""
+            validDate = None
+            try:
+                token_data = yaml.safe_load(f)
+                token = token_data.get("token")
+                valid_date_str = token_data.get("valid-date")
+                validDate = datetime.datetime.strptime(valid_date_str, "%Y-%m-%d %H:%M:%S")
+            except Exception as e:
+                print("토큰 파일 읽기 오류: ", e)
+                token = None
+                validDate = None
+            now = datetime.datetime.now()
+            if validDate and validDate > now:
+                print("기존 저장된 토큰 사용")
+                return token
+            else:
+                print("Expiration: " + validDate.strftime("%Y-%m-%d %H:%M:%S"))
+                print("Token 기간 만료")
+    url = "https://openapi.koreainvestment.com:9443/oauth2/tokenP"
+    headers = {"content-type": "application/x-www-form-urlencoded"}
+    body = {
+        "grant_type": "client_credentials",
+        "appkey": KIS_APP_KEY,
+        "appsecret": KIS_APP_SECRET
+    }
+    res = requests.post(url, headers=headers, data=json.dumps(body))
+    print("res: " + res.text)
+    token = res.json()["access_token"]
+    expired = res.json()["access_token_token_expired"]
+    with open("kisToken.yml", "w", encoding="utf-8") as f:
+        yaml.dump({
+            "token": token,
+            "valid-date": expired
+            }, f, allow_unicode=True)
+    return token
 
 def isAuthenticated(request: Request):
     if local_environment:
