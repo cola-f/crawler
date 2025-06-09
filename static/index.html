@@ -63,12 +63,12 @@
 <body>
   <div id="toolbar">
 		<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; width: 100%;">
-			<label>Start: <input id="start" type="datetime-local" value="2025-05-01T00:00"></label>
+			<label>Start: <input id="start" type="datetime-local" value="2023-01-01T00:00"></label>
 			<label>End: <input id="end" type="datetime-local" value="2025-05-05T00:00"></label>
 			<input type="text" id="keyInput" value="KRW">
 			<input type="number" id="intInput" step="1" value="10000000">
-			<input type="text" id="portfolioInput" value='{"BTC": 0.3, "ETH": 0.3, "XRP": 0.2}'>
-			<input type="text" id="allowedDeviationInput" value = '{"BTC": [0.98, 1.02], "ETH": [0.98, 1.02], "XRP": [0.98, 1.02]}'>
+			<input type="text" id="portfolioInput" value='{"360750": 0.2, "458730": 0.2, "BTC": 0.2, "ETH": 0.2}'>
+			<input type="text" id="allowedDeviationInput" value = '{"360750": [0.98, 1.02], "458730": [0.98, 1.02], "BTC": [0.98, 1.02], "ETH": [0.98, 1.02]}'>
 			<button onclick="setCondition()">🔧Set</button>
 			<button onclick="plot('/load')">📂 Load</button>
 			<button onclick="send('/save')">💾save</button>
